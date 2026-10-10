@@ -1,0 +1,144 @@
+1
+00:00:02,000 --> 00:00:02,980
+SFT.
+
+2
+00:00:03,000 --> 00:00:03,980
+DPO.
+
+3
+00:00:04,000 --> 00:00:04,980
+PPO.
+
+4
+00:00:05,000 --> 00:00:06,370
+GRPO.
+
+5
+00:00:06,500 --> 00:00:07,812
+Distillation.
+
+6
+00:00:08,450 --> 00:00:09,968
+Dozens of frameworks.
+
+7
+00:00:09,988 --> 00:00:11,379
+Hundreds of knobs.
+
+8
+00:00:11,399 --> 00:00:14,237
+One question: how do the pieces fit together?
+
+9
+00:00:16,450 --> 00:00:18,513
+Underneath, it is one gradient.
+
+10
+00:00:18,533 --> 00:00:20,607
+μ is where the data comes from.
+
+11
+00:00:20,627 --> 00:00:22,821
+ψ is how each token is weighted.
+
+12
+00:00:25,450 --> 00:00:27,955
+Fix the data, and it is a trainer problem.
+
+13
+00:00:27,975 --> 00:00:32,491
+Let the policy generate its own data, and it becomes a systems problem.
+
+14
+00:00:33,450 --> 00:00:35,302
+That system has six layers,
+
+15
+00:00:35,322 --> 00:00:38,092
+and one rule: one component per role.
+
+16
+00:00:40,450 --> 00:00:42,498
+Every layer has its arithmetic.
+
+17
+00:00:42,518 --> 00:00:45,612
+LoRA trains about 0.4% of the weights.
+
+18
+00:00:45,632 --> 00:00:50,974
+ZeRO-3 takes per-GPU memory from 120 GB to under 2.
+
+19
+00:00:52,450 --> 00:00:57,040
+Online, the loop is the system: generate, score, update, sync, repeat.
+
+20
+00:00:57,060 --> 00:00:58,759
+Find the bottleneck first.
+
+21
+00:00:58,779 --> 00:01:03,863
+One weight-transfer redesign cut that phase from 53 seconds to 7.
+
+22
+00:01:05,450 --> 00:01:07,889
+Frameworks really differ in three places:
+
+23
+00:01:07,909 --> 00:01:08,940
+asynchrony,
+
+24
+00:01:08,960 --> 00:01:10,724
+train–inference consistency,
+
+25
+00:01:10,744 --> 00:01:13,201
+and how much of the algorithm you can own.
+
+26
+00:01:15,500 --> 00:01:16,480
+verl.
+
+27
+00:01:16,500 --> 00:01:17,980
+OpenRLHF.
+
+28
+00:01:18,000 --> 00:01:18,980
+slime.
+
+29
+00:01:19,000 --> 00:01:19,980
+SkyRL.
+
+30
+00:01:20,000 --> 00:01:20,980
+AReaL.
+
+31
+00:01:21,000 --> 00:01:21,980
+NeMo RL.
+
+32
+00:01:22,000 --> 00:01:24,492
+Each one, a different set of trade-offs.
+
+33
+00:01:27,450 --> 00:01:28,756
+So: own the math.
+
+34
+00:01:28,776 --> 00:01:30,336
+Reuse the runtime.
+
+35
+00:01:32,450 --> 00:01:35,051
+Post-Training Systems, Layer by Layer.
+
+36
+00:01:35,071 --> 00:01:38,017
+The full deep dive, in English and Chinese.
+

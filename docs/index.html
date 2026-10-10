@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Post-Training Systems, Layer by Layer · 后训练工具体系</title>
+<meta name="description" content="A senior post-training engineer's map of the LLM post-training tool stack, built from one gradient: layers, memory math, the RL loop, where frameworks really differ, and how to compose them. Two narrated films, English and Chinese.">
+<meta name="theme-color" content="#06080d">
+<meta property="og:title" content="Post-Training Systems, Layer by Layer">
+<meta property="og:description" content="One gradient, six layers, one loop. A layered, mathematical map of post-training tools — two narrated films in English and Chinese.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://haokun12x.github.io/post-training-101/">
+<meta property="og:image" content="https://haokun12x.github.io/post-training-101/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2306080d'/%3E%3Cpath d='M7 22h18M9 17h14M11 12h10' stroke='%23ffb547' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  (function () {
+    var l = null;
+    try { l = localStorage.getItem("pt101-lang"); } catch (e) {}
+    if (!l) l = (navigator.language || "").toLowerCase().indexOf("zh") === 0 ? "zh" : "en";
+    document.documentElement.setAttribute("data-lang", l);
+    document.documentElement.lang = l === "zh" ? "zh-CN" : "en";
+  })();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<nav class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Post-Training Systems 101">
+    <svg class="brand-mark" viewBox="0 0 32 32" fill="none"><path d="M5 23h22M8 17.5h16M11 12h10" stroke="#ffb547" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="6.5" r="2" fill="#4fd8ff"/></svg>
+    PT · 101
+  </a>
+  <div class="nav-links">
+    <a href="#films"><span lang="en">Films</span><span lang="zh-CN">影片</span></a>
+    <a href="#equation"><span lang="en">Equation</span><span lang="zh-CN">公式</span></a>
+    <a href="#stack"><span lang="en">Stack</span><span lang="zh-CN">工具栈</span></a>
+    <a href="#arithmetic"><span lang="en">Arithmetic</span><span lang="zh-CN">算术</span></a>
+    <a href="#loop"><span lang="en">Loop</span><span lang="zh-CN">闭环</span></a>
+    <a href="#differ"><span lang="en">Differences</span><span lang="zh-CN">差异</span></a>
+    <a href="#landscape"><span lang="en">Landscape</span><span lang="zh-CN">版图</span></a>
+    <a href="#compose"><span lang="en">Compose</span><span lang="zh-CN">组合</span></a>
+  </div>
+  <div class="lang-toggle" role="group" aria-label="Language">
+    <button data-setlang="en" aria-pressed="true">EN</button>
+    <button data-setlang="zh" aria-pressed="false">中文</button>
+  </div>
+</nav>
+
+<!-- ============================================================ HERO -->
+<header class="hero" id="top">
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <p class="eyebrow rv"><span lang="en">A field guide · as of 2026-10-10</span><span lang="zh-CN">工程地图 · 截至 2026-10-10</span></p>
+    <h1 class="rv">
+      <span lang="en">Post-Training Systems,<br><em>layer by layer.</em></span>
+      <span lang="zh-CN">后训练工具体系<br><em>分层拆解</em></span>
+    </h1>
+    <p class="lead rv">
+      <span lang="en">Every post-training method is the same gradient with two dials: where the data comes from, and how each token is weighted. From that one equation follows the whole tool stack: six layers, the memory arithmetic, the RL loop, and where frameworks really differ. Told from a senior post-training engineer's bench, in two narrated films.</span>
+      <span lang="zh-CN">每一种后训练方法，都是同一个梯度上的两个旋钮：数据从哪里来，每个 token 如何加权。由这一个公式出发，可以推出整个工具体系：六层工具栈、显存算术、强化学习闭环，以及框架之间真正的差异。从资深后训练工程师的视角，配两部完整的解说影片。</span>
+    </p>
+    <div class="cta rv">
+      <a class="btn primary" href="#trailer"><svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg><span lang="en">Watch the trailer</span><span lang="zh-CN">观看预告片</span></a>
+      <a class="btn" href="#films"><span lang="en">Full films · ~25 min</span><span lang="zh-CN">完整影片 · 约 25 分钟</span></a>
+    </div>
+    <div class="hero-meta rv">
+      <span><b>1</b> <span lang="en">equation</span><span lang="zh-CN">个公式</span></span>
+      <span><b>6</b> <span lang="en">layers</span><span lang="zh-CN">层工具栈</span></span>
+      <span><b>19</b> <span lang="en">chapters</span><span lang="zh-CN">个章节</span></span>
+      <span><b>2</b> <span lang="en">languages</span><span lang="zh-CN">种语言</span></span>
+    </div>
+  </div>
+  <div class="scroll-cue" aria-hidden="true"></div>
+</header>
+
+<!-- ============================================================ TRAILER -->
+<section id="trailer">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">00</span><span lang="en">Trailer</span><span lang="zh-CN">预告片</span></p>
+    <div class="split trailer-split">
+      <div class="rv">
+        <h2><span lang="en">The whole system in <em>a hundred seconds.</em></span><span lang="zh-CN">一百秒，<em>看懂整套体系</em></span></h2>
+        <p class="muted">
+          <span lang="en">One gradient, two regimes, six layers, the arithmetic, the loop, and the rule that ties it together: own the math, reuse the runtime.</span>
+          <span lang="zh-CN">一个梯度、两种形态、六层工具栈、每层的算术、在线闭环，以及把它们串起来的原则：掌握数学，复用运行时。</span>
+        </p>
+      </div>
+      <div class="rv">
+        <div class="frame-bar">
+          <span class="label"><span lang="en">Trailer · 1:44</span><span lang="zh-CN">预告片 · 1:44</span></span>
+          <div class="seg" role="group" aria-label="Trailer language">
+            <button data-trailer="en" aria-pressed="true">English</button>
+            <button data-trailer="zh" aria-pressed="false">中文</button>
+          </div>
+        </div>
+        <div class="frame">
+          <video id="trailer-video" controls playsinline preload="metadata" poster="media/promo_poster.jpg">
+            <source src="media/promo_en.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ FILMS -->
+<section id="films">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">01</span><span lang="en">The films</span><span lang="zh-CN">完整影片</span></p>
+    <h2 class="rv"><span lang="en">Two films, <em>one map.</em></span><span lang="zh-CN">两部影片，<em>一张地图</em></span></h2>
+    <p class="lead rv">
+      <span lang="en">Nineteen chapters in five parts, with the equations on screen and the reasoning in the narration. Pick a language; switch subtitles between English and Chinese at any time.</span>
+      <span lang="zh-CN">五个部分、十九个章节：屏幕上是公式，解说里是推理。选择语言版本，字幕可随时在中英文之间切换。</span>
+    </p>
+    <div class="frame-bar rv">
+      <span class="label" id="film-label">Deep dive</span>
+      <div class="seg" role="group" aria-label="Film language">
+        <button data-film="en" aria-pressed="true">English</button>
+        <button data-film="zh" aria-pressed="false">中文</button>
+      </div>
+    </div>
+    <div class="theater rv">
+      <div class="frame">
+        <video id="film-video" controls playsinline preload="metadata" poster="media/full_poster_en.jpg" crossorigin="anonymous"></video>
+      </div>
+      <div class="chapters" id="chapters">
+        <div class="head"><span lang="en">Chapters</span><span lang="zh-CN">章节</span></div>
+      </div>
+    </div>
+    <div class="downloads rv">
+      <a class="btn" id="dl-film" href="media/full_en.mp4" download><span lang="en">Download MP4</span><span lang="zh-CN">下载 MP4</span></a>
+      <a class="btn" id="dl-srt-en" href="media/full_en.en.srt" download><span lang="en">Subtitles · EN</span><span lang="zh-CN">字幕 · 英文</span></a>
+      <a class="btn" id="dl-srt-zh" href="media/full_en.zh.srt" download><span lang="en">Subtitles · 中文</span><span lang="zh-CN">字幕 · 中文</span></a>
+      <a class="btn" href="media/script_bilingual.md"><span lang="en">Bilingual script</span><span lang="zh-CN">中英对照解说稿</span></a>
+    </div>
+
+    <div class="transcript rv">
+      <div class="frame-bar">
+        <span class="label"><span lang="en">Read along · full narration</span><span lang="zh-CN">逐章阅读 · 完整解说词</span></span>
+        <div class="seg" role="group" aria-label="Transcript mode">
+          <button data-tmode="one" aria-pressed="true"><span lang="en">Current language</span><span lang="zh-CN">当前语言</span></button>
+          <button data-tmode="both" aria-pressed="false"><span lang="en">Side by side</span><span lang="zh-CN">中英对照</span></button>
+        </div>
+      </div>
+      <div id="transcript"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ EQUATION -->
+<section id="equation">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">02</span><span lang="en">Part 1 · One equation</span><span lang="zh-CN">第一部分 · 一个公式</span></p>
+    <h2 class="rv"><span lang="en">One gradient behind <em>every method.</em></span><span lang="zh-CN">一个梯度，<em>统一所有方法</em></span></h2>
+    <p class="lead rv">
+      <span lang="en">Sample a prompt <i>x</i> and a response <i>y</i> from some distribution <b style="color:var(--cyan)">μ</b>, then push up the log-probability of each token, weighted by <b style="color:var(--amber)">ψ</b>. Methods differ in only two places.</span>
+      <span lang="zh-CN">从某个分布 <b style="color:var(--cyan)">μ</b> 中取出提示 <i>x</i> 与回答 <i>y</i>，再提高每个 token 的对数概率，并用 <b style="color:var(--amber)">ψ</b> 加权。不同方法只在两处不同。</span>
+    </p>
+    <div class="equation rv"><span class="tex" data-display="1" data-tex="\nabla_\theta J=\mathbb{E}_{(x,y)\sim{\color{#4fd8ff}\mu}}\Big[\sum_t {\color{#ffb547}\psi_t}\,\nabla_\theta\log\pi_\theta(y_t\mid x,y_{&lt;t})\Big]"></span></div>
+    <div class="methods rv" id="methods" role="group" aria-label="Methods"></div>
+    <div class="card method-card rv" id="method-card"></div>
+    <div class="spacer"></div>
+    <div class="grid g2 rv">
+      <div class="card accent-top" style="--c: var(--blue)">
+        <span class="tag"><span lang="en"><span class="nt">μ</span> fixed</span><span lang="zh-CN"><span class="nt">μ</span> 固定</span></span>
+        <h3><span lang="en">→ a trainer problem</span><span lang="zh-CN">→ 训练器问题</span></h3>
+        <p><span lang="en">Load data · compute loss · step the optimizer. SFT, DPO and other offline objectives live here.</span><span lang="zh-CN">读数据 · 算损失 · 走优化器。SFT、DPO 等离线目标都属于这一类。</span></p>
+      </div>
+      <div class="card accent-top" style="--c: var(--coral)">
+        <span class="tag"><span lang="en"><span class="nt">μ</span> = current policy (moving)</span><span lang="zh-CN"><span class="nt">μ</span> = 当前策略（随训练变化）</span></span>
+        <h3><span lang="en">→ a systems problem</span><span lang="zh-CN">→ 系统问题</span></h3>
+        <p><span lang="en">Generation engine · rewards &amp; environments · weight sync · version bookkeeping for which policy produced which token.</span><span lang="zh-CN">生成引擎 · 奖励与环境 · 权重同步 · 记录每个 token 由哪个版本的策略产生。</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ STACK -->
+<section id="stack">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">03</span><span lang="en">Part 2 · The stack</span><span lang="zh-CN">第二部分 · 工具栈</span></p>
+    <h2 class="rv"><span lang="en">Six layers, <em>one component per role.</em></span><span lang="zh-CN">六层工具栈，<em>每个角色选一个部件</em></span></h2>
+    <p class="lead rv">
+      <span lang="en">A trainer can't replace a rollout loop; an engine never runs backward. Pick one component for each role, then verify the whole path: model ↔ backend ↔ weight sync ↔ engine ↔ trajectory ↔ update. Select a layer.</span>
+      <span lang="zh-CN">训练器替代不了 rollout 循环，推理引擎也从不做反向传播。每个角色只选一个部件，再验证整条路径：模型 ↔ 后端 ↔ 权重同步 ↔ 引擎 ↔ 轨迹 ↔ 更新。点击任意一层查看详情。</span>
+    </p>
+    <div class="stack rv">
+      <div class="layers" id="layers" role="group" aria-label="Layers"></div>
+      <div class="layer-detail card" id="layer-detail"></div>
+    </div>
+    <div class="grid g3 beside rv">
+      <div class="card accent-top" style="--c: var(--violet)">
+        <span class="tag"><span lang="en">Beside the stack · agents &amp; envs</span><span lang="zh-CN">栈旁 · Agent 与环境</span></span>
+        <p class="mono" style="font-size:13.5px">rLLM · Agent Lightning · ART · verifiers · NeMo Gym · OpenEnv · Atropos</p>
+      </div>
+      <div class="card accent-top" style="--c: var(--pink)">
+        <span class="tag"><span lang="en">Beside the stack · hosted</span><span lang="zh-CN">栈旁 · 托管服务</span></span>
+        <p><span lang="en"><strong>Tinker</strong>: <code>forward_backward</code> · <code>optim_step</code> · <code>sample</code>. You write the loop; LoRA-centric.</span><span lang="zh-CN"><strong>Tinker</strong>：<code>forward_backward</code> · <code>optim_step</code> · <code>sample</code>。你写循环，以 LoRA 为主。</span></p>
+      </div>
+      <div class="card accent-top" style="--c: var(--amber)">
+        <span class="tag"><span lang="en">Cross-layer toolchains</span><span lang="zh-CN">跨层工具链</span></span>
+        <p><span lang="en">LLaMA-Factory · ms-swift · Axolotl · Unsloth bundle model, data, PEFT and trainer into one recipe.</span><span lang="zh-CN">LLaMA-Factory · ms-swift · Axolotl · Unsloth 把模型、数据、PEFT 与训练器打包成一套配方。</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ ARITHMETIC -->
+<section id="arithmetic">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">04</span><span lang="en">Part 2 · The arithmetic</span><span lang="zh-CN">第二部分 · 算术</span></p>
+    <h2 class="rv"><span lang="en">Every layer has <em>its arithmetic.</em></span><span lang="zh-CN">每一层，<em>都有自己的算术</em></span></h2>
+    <p class="lead rv">
+      <span lang="en">Before choosing a tool, do the math. Drag the sliders: the defaults reproduce the numbers in the papers and the films.</span>
+      <span lang="zh-CN">选工具之前，先算账。拖动滑块试试：默认值复现了论文与影片中的数字。</span>
+    </p>
+
+    <div class="grid g2">
+      <div class="card rv" style="--c: var(--amber)">
+        <span class="tag"><span lang="en">Parameterization · LoRA</span><span lang="zh-CN">参数化层 · LoRA</span></span>
+        <div class="formula"><span class="tex" data-tex="\begin{aligned}&h=W_0x+\tfrac{\alpha}{r}\,BAx,\qquad B_0=0\\&\#\text{trainable}=r(d+k)\ \text{vs.}\ dk\end{aligned}"></span></div>
+        <div class="calc" id="calc-lora"></div>
+      </div>
+      <div class="card rv" style="--c: var(--coral)">
+        <span class="tag"><span lang="en">Training state per parameter</span><span lang="zh-CN">每个参数的训练状态</span></span>
+        <div class="formula"><span class="tex" data-tex="16\Psi=\underbrace{2\Psi}_{\text{bf16 }W}+\underbrace{2\Psi}_{\text{grad}}+\underbrace{12\Psi}_{\text{fp32 master},\,m,\,v}"></span></div>
+        <div class="calc" id="calc-mem"></div>
+      </div>
+      <div class="card rv" style="--c: var(--teal)">
+        <span class="tag"><span lang="en">Execution · sharding (ZeRO / FSDP2)</span><span lang="zh-CN">训练执行层 · 分片（ZeRO / FSDP2）</span></span>
+        <div class="formula"><span class="tex" data-tex="\begin{aligned}&\text{DDP}\ (2{+}2{+}K)\Psi &&\text{ZeRO-1}\ 4\Psi{+}\tfrac{K\Psi}{N}\\&\text{ZeRO-2}\ 2\Psi{+}\tfrac{(2+K)\Psi}{N} &&\text{ZeRO-3}\ \tfrac{(4+K)\Psi}{N}\end{aligned}"></span></div>
+        <div class="calc" id="calc-zero"></div>
+      </div>
+      <div class="card rv" style="--c: var(--blue)">
+        <span class="tag"><span lang="en">Online RL · step time</span><span lang="zh-CN">在线 RL · 单步时间</span></span>
+        <div class="formula"><span class="tex" data-tex="\begin{aligned}&T^{\text{seq}}=T_{\text{gen}}+T_{\text{rew}}+T_{\text{train}}+T_{w}\\&T^{\text{pipe}}\approx\max(T_{\text{gen}}+T_{\text{rew}},\,T_{\text{train}})+T_{w}\end{aligned}"></span></div>
+        <div class="calc" id="calc-step"></div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="grid g2 rv">
+      <div class="callout" style="--c: var(--amber)">
+        <span lang="en"><b>Caveat.</b> Training only LoRA ≠ syncing only LoRA. Online RL may merge/unmerge adapters or gather full weights for the engine. QLoRA paper: a 65B model fine-tuned on one 48 GB GPU (NF4 + double quantization + paged optimizers).</span>
+        <span lang="zh-CN"><b>注意。</b>只训练 LoRA ≠ 只同步 LoRA。在线 RL 可能需要 merge/unmerge，或为推理引擎聚合完整权重。QLoRA 论文：在单张 48 GB GPU 上微调 65B 模型（NF4 + 双重量化 + 分页优化器）。</span>
+      </div>
+      <div class="callout" style="--c: var(--teal)">
+        <span lang="en"><b>Composition rules.</b> FSDP2 vs ZeRO-3 are alternatives, never double-wrap. Ray = processes &amp; resources; NCCL = tensors. Bug to avoid: dividing the loss by grad-accumulation steps yourself <i>and</i> in the engine shrinks gradients twice. Sharding changes cost, not the objective.</span>
+        <span lang="zh-CN"><b>组合规则。</b>FSDP2 与 ZeRO-3 是二选一，切勿双重包装。Ray 管进程与资源，NCCL 管张量。常见 bug：你和引擎都把 loss 除以梯度累积步数，梯度被缩小两次。分片改变的是成本，不是目标函数。</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ LOOP -->
+<section id="loop">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">05</span><span lang="en">Part 3 · Offline vs. online</span><span lang="zh-CN">第三部分 · 离线与在线</span></p>
+    <h2 class="rv"><span lang="en">Fixed data is a trainer. <em>Fresh data is a loop.</em></span><span lang="zh-CN">固定数据是训练器，<em>实时数据是闭环</em></span></h2>
+
+    <div class="sub-h rv"><span class="k">3.1</span><h3><span lang="en">Offline: SFT &amp; DPO</span><span lang="zh-CN">离线：SFT 与 DPO</span></h3></div>
+    <div class="split rv">
+      <div>
+        <div class="formula"><span class="tex" data-display="1" data-tex="\mathcal{L}_{\text{SFT}}=-\frac{1}{Z}\sum_i\sum_t m_{i,t}\,\log\pi_\theta(y_{i,t}\mid x_i,y_{i,&lt;t})"></span></div>
+        <div class="formula"><span class="tex" data-display="1" data-tex="\mathcal{L}_{\text{DPO}}=-\mathbb{E}\Big[\log\sigma\Big(\beta\log\tfrac{\pi_\theta(y_w\mid x)}{\pi_{\text{ref}}(y_w\mid x)}-\beta\log\tfrac{\pi_\theta(y_l\mid x)}{\pi_{\text{ref}}(y_l\mid x)}\Big)\Big]"></span></div>
+        <p class="muted"><span lang="en">No generation engine needed; π<sub>ref</sub> log-probs can be precomputed. Recipes: LLaMA-Factory · ms-swift · Axolotl. Memory/speed: Unsloth. JAX/TPU: Tunix.</span><span lang="zh-CN">不需要生成引擎；π<sub>ref</sub> 的对数概率可预先计算。配方：LLaMA-Factory · ms-swift · Axolotl；省显存提速：Unsloth；JAX/TPU：Tunix。</span></p>
+      </div>
+      <div class="card" style="--c: var(--amber)">
+        <span class="tag"><span lang="en">The normalizer is part of the objective</span><span lang="zh-CN">归一化因子是目标函数的一部分</span></span>
+        <div class="formula"><span class="tex" data-tex="\text{token-mean: }Z=\textstyle\sum_i|y_i|\Rightarrow w_{\text{tok}}=\frac{1}{N_{\text{tok}}}"></span></div>
+        <div class="formula"><span class="tex" data-tex="\text{sequence-mean: }\frac{1}{G}\textstyle\sum_i\frac{1}{|y_i|}\sum_t\Rightarrow w_{\text{tok}}=\frac{1}{G\,|y_i|}"></span></div>
+        <p><span lang="en">Example: G = 2, |y₁| = 100, |y₂| = 1000. Sequence-mean gives 1/200 vs 1/2000 per token (<b class="acc">10× apart</b>); token-mean gives 1/1100 to every token. A mean of micro-batch means ≠ the global mean.</span><span lang="zh-CN">例：G = 2，|y₁| = 100，|y₂| = 1000。序列平均下每个 token 的权重是 1/200 对 1/2000（<b class="acc">相差 10 倍</b>）；token 平均下每个 token 都是 1/1100。微批均值的均值 ≠ 全局均值。</span></p>
+        <p class="fine"><span lang="en">Code-review finding (TRL @72cf37d): a custom <code>compute_loss_func</code> triggers a full-logits forward plus an extra no-grad fused forward for metrics, while the default uses the fused LM head. Changing the loss can change memory and throughput.</span><span lang="zh-CN">源码审查发现（TRL @72cf37d）：自定义 <code>compute_loss_func</code> 会走完整 logits 前向，并为指标额外做一次 no-grad 融合前向；默认路径使用融合 LM head。改 loss 可能改变显存与吞吐。</span></p>
+      </div>
+    </div>
+
+    <div class="sub-h rv"><span class="k">3.2</span><h3><span lang="en">Online: the loop and its objectives</span><span lang="zh-CN">在线：闭环与目标函数</span></h3></div>
+    <div class="split rv">
+      <div id="loop-diagram"></div>
+      <div>
+        <div class="formula"><span class="tex" data-display="1" data-tex="J=\mathbb{E}_t\Big[\min\big(\rho_t\hat A_t,\ \mathrm{clip}(\rho_t,1\!-\!\epsilon,1\!+\!\epsilon)\,\hat A_t\big)\Big],\quad \rho_t=\frac{\pi_\theta(a_t\mid h_t)}{\pi_{\text{old}}(a_t\mid h_t)}"></span></div>
+        <div class="formula"><span class="tex" data-display="1" data-tex="\text{GRPO: }\hat A_i=\frac{r_i-\mathrm{mean}(r_{1:G})}{\mathrm{std}(r_{1:G})+\delta}\qquad \text{optional: }-\beta\,\mathrm{KL}(\pi_\theta\,\|\,\pi_{\text{ref}})"></span></div>
+        <p class="muted"><span lang="en">PPO learns a critic for the advantage (GAE); GRPO replaces it with group-normalized rewards over G samples of the same prompt.</span><span lang="zh-CN">PPO 用 critic 估计优势（GAE）；GRPO 改用同一提示 G 个样本的组内归一化奖励。</span></p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="eyebrow rv" style="margin-top:30px"><span lang="en">Four probability tracks, kept apart</span><span lang="zh-CN">四条概率轨道，必须分开</span></p>
+    <div class="tracks rv" id="tracks"></div>
+    <div class="spacer"></div>
+    <div class="equation rv" style="margin-bottom:0"><span class="tex" data-display="1" data-tex="\frac{\pi_\theta}{\mu}=\underbrace{\frac{\pi_\theta}{\pi_{\text{old}}}}_{\text{PPO ratio}}\cdot\underbrace{\frac{\pi_{\text{old}}}{\mu}}_{\text{mismatch}}\ \ \longrightarrow\ \ \text{TIS: }\min\Big(\frac{\pi_{\text{old}}}{\mu},\,C\Big)"></span></div>
+  </div>
+</section>
+
+<!-- ============================================================ DIFFER -->
+<section id="differ">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">06</span><span lang="en">Part 4 · Where systems really differ</span><span lang="zh-CN">第四部分 · 系统真正的差异</span></p>
+    <h2 class="rv"><span lang="en">Not the algorithm list. <em>Everything around it.</em></span><span lang="zh-CN">差距不在算法列表，<em>而在它周围的一切</em></span></h2>
+    <p class="lead rv"><span lang="en">Scheduling, train–inference consistency, MoE depth, weight transfer and recovery decide the outcome. Find the bottleneck first.</span><span lang="zh-CN">调度、训练推理一致性、MoE 深度、权重传输与恢复能力决定结果。先找到瓶颈。</span></p>
+
+    <div class="sub-h rv"><span class="k">4.1</span><h3><span lang="en">Step time: published numbers</span><span lang="zh-CN">单步时间：官方公布的数字</span></h3></div>
+    <div class="tbl-wrap rv" id="tbl-step"></div>
+    <p class="fine rv" style="margin-top:14px"><span lang="en">Official numbers are per-step (≈ 5-step averages) or per-phase, not convergence speed and not end-to-end speedups. Amdahl check: generation 80%, training 20%, train 2× faster → 0.8 + 0.2/2 = 0.90, only 10% saved. Optimize cost-to-target = Σ GPUs × hours per role until the validation target is reached.</span><span lang="zh-CN">官方数字是单步（约 5 步平均）或单阶段的，不代表收敛速度，也不是端到端加速。Amdahl 检验：生成 80%、训练 20%，训练加速 2 倍 → 0.8 + 0.2/2 = 0.90，只节省 10%。要优化的是达标成本 = 各角色 GPU 数 × 小时数之和（直到验证集达标）。</span></p>
+
+    <div class="sub-h rv"><span class="k">4.2</span><h3><span lang="en">Asynchrony is not a boolean</span><span lang="zh-CN">异步不是一个布尔开关</span></h3></div>
+    <div class="grid g2 rv" style="margin-bottom:20px">
+      <div class="formula"><span class="tex" data-tex="\Delta v=v_{\text{learner}}-v_{\text{behavior}}(\text{token span}),\quad\text{consume iff }\Delta v\le k"></span></div>
+      <div class="formula"><span class="tex" data-tex="w_t=\min\Big(\frac{\pi_\theta(a_t\mid h_t)}{\mu_t(a_t\mid h_t)},\,C\Big)"></span></div>
+    </div>
+    <div class="tbl-wrap rv" id="tbl-async"></div>
+    <p class="fine rv" style="margin-top:14px"><span lang="en">⚠ The same “staleness = 2” is not the same age across frameworks, and dropping slow trajectories quietly removes the hard problems. Version belongs to token spans: a mid-flight update produces one trajectory from two policies.</span><span lang="zh-CN">⚠ 不同框架里同样的 “staleness = 2” 并不代表同样的版本年龄；丢弃慢轨迹会悄悄移除难题。版本应绑定到 token 片段：生成中途更新权重，会让一条轨迹来自两个策略。</span></p>
+
+    <div class="sub-h rv"><span class="k">4.3</span><h3><span lang="en">Train–inference consistency: five error sources</span><span lang="zh-CN">训练—推理一致性：五个误差来源</span></h3></div>
+    <div class="tbl-wrap rv" id="tbl-cons"></div>
+    <div class="equation rv" style="margin-top:20px">
+      <span class="tex" data-display="1" data-tex="S_p=\text{smallest set with }\textstyle\sum_{a\in S_p}\pi(a)\ge p,\quad \mu(a)=\frac{\pi(a)}{Z_S}\,\mathbf{1}[a\in S_p],\quad Z_S=\textstyle\sum_{b\in S_p}\pi(b)\le 1"></span>
+      <div class="spacer" style="height:10px"></div>
+      <span class="tex" data-display="1" data-tex="\log\mu(a)={\color{#ffb547}\log\pi(a)-\log Z_S}"></span>
+      <p class="muted" style="margin:14px auto 0; max-width:62ch; font-size:15px"><span lang="en">A full-softmax recompute is off by the factor Z(S), differently for every token. Fix: normalize on the same candidate set during training (sampler-support replay).</span><span lang="zh-CN">用完整 softmax 重算，会差一个 Z(S) 因子，而且每个 token 都不同。解决：训练时在同一候选集上归一化（采样支持集重放）。</span></p>
+    </div>
+
+    <div class="sub-h rv"><span class="k">4.4</span><h3><span lang="en">What “customize every detail” really means</span><span lang="zh-CN">“定制每个算法细节”到底意味着什么</span></h3></div>
+    <div class="tbl-wrap rv" id="tbl-free"></div>
+    <div class="grid g2 rv" style="margin-top:20px">
+      <div class="card" style="--c: var(--coral)">
+        <span class="tag"><span lang="en">Example · the entropy bonus trap</span><span lang="zh-CN">例子 · 熵奖励的陷阱</span></span>
+        <div class="formula"><span class="tex" data-tex="\mathbb{E}_{a\sim\pi_\theta}\big[\nabla_\theta\log\pi_\theta(a)\big]=0"></span></div>
+        <p><span lang="en">So the naive sampled-token bonus −log π<sub>θ</sub>(a<sub>t</sub>) has zero expected gradient on-policy.</span><span lang="zh-CN">因此，朴素的采样 token 奖励 −log π<sub>θ</sub>(a<sub>t</sub>) 在 on-policy 下期望梯度为零。</span></p>
+      </div>
+      <div class="card" style="--c: var(--teal)">
+        <span class="tag"><span lang="en">What you actually need</span><span lang="zh-CN">真正需要的</span></span>
+        <div class="formula"><span class="tex" data-tex="\nabla_\theta H=-\,\mathbb{E}_{a\sim\pi_\theta}\big[\log\pi_\theta(a)\,\nabla_\theta\log\pi_\theta(a)\big]"></span></div>
+        <p><span lang="en">Exact entropy needs <b class="acc">full logits</b>, vocab-sharded under TP. A framework's custom-loss hook usually covers only part of row 1.</span><span lang="zh-CN">精确熵需要<b class="acc">完整 logits</b>，在 TP 下按词表分片。框架的自定义 loss 接口通常只覆盖第 1 行的一部分。</span></p>
+      </div>
+    </div>
+
+    <div class="sub-h rv"><span class="k">4.5</span><h3><span lang="en">Where each framework lets you in</span><span lang="zh-CN">各框架的算法入口</span></h3></div>
+    <div class="tbl-wrap rv" id="tbl-entry"></div>
+    <p class="fine rv" style="margin-top:14px"><span lang="en">Compare: boundaries crossed · fast paths kept · maintenance cost. Design to copy (NeMo RL): the loss receives global valid-token / valid-sequence counts, so distributed normalization is part of the contract.</span><span lang="zh-CN">比较维度：跨越多少边界 · 保留哪些快路径 · 维护成本。值得借鉴的设计（NeMo RL）：loss 直接拿到全局有效 token / 序列数，分布式归一化成为契约的一部分。</span></p>
+  </div>
+</section>
+
+<!-- ============================================================ LANDSCAPE -->
+<section id="landscape">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">07</span><span lang="en">Part 4 · The landscape</span><span lang="zh-CN">第四部分 · 框架版图</span></p>
+    <h2 class="rv"><span lang="en">Same equation, <em>different trade-offs.</em></span><span lang="zh-CN">同一个公式，<em>不同的取舍</em></span></h2>
+    <div class="filters rv" id="filters" role="group" aria-label="Filter"></div>
+    <div class="grid g3 rv" id="frameworks"></div>
+    <div class="grid g4 rv" style="margin-top:20px" id="landscape-extra"></div>
+  </div>
+</section>
+
+<!-- ============================================================ COMPOSE -->
+<section id="compose">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">08</span><span lang="en">Part 5 · Choose &amp; compose</span><span lang="zh-CN">第五部分 · 选型与组合</span></p>
+    <h2 class="rv"><span lang="en">Own the trajectory contract. <em>Reuse the runtime.</em></span><span lang="zh-CN">自己掌握轨迹契约，<em>复用运行时</em></span></h2>
+
+    <div class="sub-h rv"><span class="k">5.1</span><h3><span lang="en">A decision procedure</span><span lang="zh-CN">选型决策流程</span></h3></div>
+    <div class="decide rv">
+      <div>
+        <div class="q on" id="q1">
+          <span class="qk">Q1</span>
+          <div class="qt"><span lang="en">Is the training data produced by the current policy?</span><span lang="zh-CN">训练数据是否由当前策略产生？</span></div>
+          <div class="yn"><button class="chip" data-q1="yes"><span lang="en">Yes</span><span lang="zh-CN">是</span></button><button class="chip" data-q1="no"><span lang="en">No</span><span lang="zh-CN">否</span></button></div>
+        </div>
+        <div class="q off" id="q2">
+          <span class="qk">Q2</span>
+          <div class="qt"><span lang="en">Does your idea fit generator + advantage + policy loss?</span><span lang="zh-CN">你的想法能否落在 generator + 优势 + policy loss 接口内？</span></div>
+          <div class="yn"><button class="chip" data-q2="yes"><span lang="en">Yes</span><span lang="zh-CN">是</span></button><button class="chip" data-q2="no"><span lang="en">No</span><span lang="zh-CN">否</span></button></div>
+        </div>
+        <p class="fine"><span lang="en">Special cases, whichever branch you are on: below.</span><span lang="zh-CN">无论走哪条分支，特殊场景见下方。</span></p>
+      </div>
+      <div class="card answer" id="answer"></div>
+    </div>
+    <div class="grid g4 rv" style="margin-top:20px" id="special"></div>
+
+    <div class="sub-h rv"><span class="k">5.2</span><h3><span lang="en">The trajectory contract and a minimal architecture</span><span lang="zh-CN">轨迹契约与最小架构</span></h3></div>
+    <div class="split rv">
+      <div>
+        <p class="muted"><span lang="en">Define it yourself. Every field below is something a framework will otherwise decide for you, silently.</span><span lang="zh-CN">由你自己定义。下面每一项，如果你不定义，框架就会替你悄悄决定。</span></p>
+        <ul class="check" id="contract"></ul>
+      </div>
+      <div>
+        <div class="mods" id="mods"></div>
+        <pre class="code" id="pseudo"></pre>
+        <p class="fine" style="margin-top:12px"><span lang="en">Concept, not a real API. Single-actor policy gradient: hand most steps to an existing trainer. Several networks: own the learner loop.</span><span lang="zh-CN">概念伪代码，非真实 API。单 actor 策略梯度：把大部分步骤交给现成 trainer；涉及多个网络：自己持有学习器主循环。</span></p>
+        <div class="callout" style="--c: var(--blue); margin-top:18px">
+          <span lang="en"><b>Name your clocks.</b> Optimizer step ≠ published policy version ≠ recoverable checkpoint. An online checkpoint = weights + optimizer + rollout queue + versions + replay position + env state + RNG / sampler state.</span>
+          <span lang="zh-CN"><b>给时钟命名。</b>优化器 step ≠ 发布的策略版本 ≠ 可恢复的 checkpoint。在线训练的 checkpoint = 权重 + 优化器 + rollout 队列 + 版本 + replay 位置 + 环境状态 + 随机数/采样器状态。</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-h rv"><span class="k">5.3</span><h3><span lang="en">Validate: two stages and a code checklist</span><span lang="zh-CN">验证：两阶段评测与源码检查清单</span></h3></div>
+    <div class="grid g2 rv">
+      <div class="card accent-top" style="--c: var(--teal)">
+        <span class="tag"><span lang="en">Stage 1 · fixed trajectories → numeric parity</span><span lang="zh-CN">阶段一 · 固定轨迹 → 数值对齐</span></span>
+        <p><span lang="en">Same tokens, masks, rewards and behavior logprobs. Compare loss, gradients, one parameter update, memory and time. This separates <b class="acc">execution</b> differences from <b class="acc">sampling</b> differences.</span><span lang="zh-CN">相同的 token、掩码、奖励与行为 logprob。比较 loss、梯度、一次参数更新、显存与时间。这能把<b class="acc">执行</b>差异与<b class="acc">采样</b>差异分开。</span></p>
+      </div>
+      <div class="card accent-top" style="--c: var(--amber)">
+        <span class="tag"><span lang="en">Stage 2 · closed loop → cost to target</span><span lang="zh-CN">阶段二 · 完整闭环 → 达标成本</span></span>
+        <p><span lang="en">Same start checkpoint, data, eval set and budget. Align group size, temperature, top-p/k, max length, reward norm, loss reduction, KL, clip, filtering, updates per batch, precision and GPUs. Report <b class="acc">GPU-hours to target</b> over several seeds.</span><span lang="zh-CN">相同的起始 checkpoint、数据、评测集与预算。对齐组大小、温度、top-p/k、最大长度、奖励归一化、loss 归约方式、KL、clip、过滤、每批更新次数、精度与 GPU。报告多个随机种子下的<b class="acc">达标 GPU 小时</b>。</span></p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="card rv">
+      <span class="tag" style="--c: var(--coral)"><span lang="en">Code checklist · read the source for these</span><span lang="zh-CN">源码检查清单 · 逐项读源码确认</span></span>
+      <ul class="check" id="codecheck"></ul>
+      <p class="fine" style="margin-top:14px"><span lang="en"><b>Anchor:</b> a tiny pure-PyTorch reference. <b>Order:</b> rollout batching → ref/critic forward → train memory/attention → weight transfer → async overlap → low precision &amp; MoE.</span><span lang="zh-CN"><b>锚点：</b>一个极小的纯 PyTorch 参考实现。<b>优化顺序：</b>rollout 批处理 → ref/critic 前向 → 训练显存/attention → 权重传输 → 异步重叠 → 低精度与 MoE。</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ TAKEAWAYS -->
+<section id="takeaways">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">09</span><span lang="en">Summary</span><span lang="zh-CN">总结</span></p>
+    <h2 class="rv"><span lang="en">Five <em>takeaways.</em></span><span lang="zh-CN">五条<em>结论</em></span></h2>
+    <div class="takeaways rv" id="takeaways-list"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap cols">
+    <div>
+      <div class="sig"><span lang="en">Own the math. Reuse the runtime.</span><span lang="zh-CN">掌握数学，复用运行时。</span></div>
+      <p><span lang="en">Synthesized from a framework survey and a source-code engineering review of post-training tools, checked against source and official documentation as of 2026-10-10. No unified GPU benchmark was run: recommendations are engineering judgments, not a cross-framework speed ranking.</span><span lang="zh-CN">综合自一份后训练框架调研与一份源码级工程评审，按 2026-10-10 的源码与官方资料核查。未在统一条件下运行 GPU 基准测试：建议属于工程选型判断，不是跨框架速度排名。</span></p>
+    </div>
+    <div>
+      <h4><span lang="en">Media</span><span lang="zh-CN">媒体</span></h4>
+      <ul>
+        <li><a href="media/full_en.mp4">Deep dive · English</a></li>
+        <li><a href="media/full_zh.mp4">完整版 · 中文</a></li>
+        <li><a href="media/promo_en.mp4">Trailer · English</a></li>
+        <li><a href="media/promo_zh.mp4">预告片 · 中文</a></li>
+        <li><a href="media/script_bilingual.md"><span lang="en">Bilingual script</span><span lang="zh-CN">中英对照解说稿</span></a></li>
+      </ul>
+    </div>
+    <div>
+      <h4><span lang="en">Source</span><span lang="zh-CN">源码与资料</span></h4>
+      <ul>
+        <li><a href="https://github.com/haokun12x/post-training-101">github.com/haokun12x/post-training-101</a></li>
+        <li><a href="https://github.com/haokun12x/post-training-101/tree/main/reports"><span lang="en">Research reports</span><span lang="zh-CN">调研报告</span></a></li>
+        <li><span class="muted"><span lang="en">Narration: Kokoro-82M (offline TTS). Visuals: Python, PIL, LaTeX, PyTorch.</span><span lang="zh-CN">配音：Kokoro-82M（离线 TTS）。画面：Python、PIL、LaTeX、PyTorch。</span></span></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/chapters.js"></script>
+<script defer src="assets/app.js"></script>
+</body>
+</html>

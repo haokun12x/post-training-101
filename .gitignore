@@ -1,0 +1,7 @@
+video/build/
+video/output/
+promo/build/
+promo/output/
+__pycache__/
+*.pyc
+.DS_Store
