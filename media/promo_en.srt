@@ -99,46 +99,58 @@ train–inference consistency,
 and how much of the algorithm you can own.
 
 26
-00:01:15,500 --> 00:01:16,480
-verl.
+00:01:15,450 --> 00:01:19,292
+Look closer: every framework is a recipe of the same atoms.
 
 27
-00:01:16,500 --> 00:01:17,980
-OpenRLHF.
+00:01:19,312 --> 00:01:22,438
+Every term of the objective has an address in the code.
 
 28
-00:01:18,000 --> 00:01:18,980
-slime.
+00:01:22,458 --> 00:01:24,550
+Know how deep your change must dig.
 
 29
-00:01:19,000 --> 00:01:19,980
-SkyRL.
+00:01:27,500 --> 00:01:28,480
+verl.
 
 30
-00:01:20,000 --> 00:01:20,980
-AReaL.
+00:01:28,500 --> 00:01:29,980
+OpenRLHF.
 
 31
-00:01:21,000 --> 00:01:21,980
-NeMo RL.
+00:01:30,000 --> 00:01:30,980
+slime.
 
 32
-00:01:22,000 --> 00:01:24,492
-Each one, a different set of trade-offs.
+00:01:31,000 --> 00:01:31,980
+SkyRL.
 
 33
-00:01:27,450 --> 00:01:28,756
-So: own the math.
+00:01:32,000 --> 00:01:32,980
+AReaL.
 
 34
-00:01:28,776 --> 00:01:30,336
-Reuse the runtime.
+00:01:33,000 --> 00:01:33,980
+NeMo RL.
 
 35
-00:01:32,450 --> 00:01:35,051
-Post-Training Systems, Layer by Layer.
+00:01:34,000 --> 00:01:36,492
+Each one, a different set of trade-offs.
 
 36
-00:01:35,071 --> 00:01:38,017
+00:01:39,450 --> 00:01:40,756
+So: own the math.
+
+37
+00:01:40,776 --> 00:01:42,336
+Reuse the runtime.
+
+38
+00:01:44,450 --> 00:01:47,051
+Post-Training Systems, Layer by Layer.
+
+39
+00:01:47,071 --> 00:01:50,017
 The full deep dive, in English and Chinese.
 

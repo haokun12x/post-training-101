@@ -44,6 +44,7 @@
     <a href="#loop"><span lang="en">Loop</span><span lang="zh-CN">闭环</span></a>
     <a href="#differ"><span lang="en">Differences</span><span lang="zh-CN">差异</span></a>
     <a href="#landscape"><span lang="en">Landscape</span><span lang="zh-CN">版图</span></a>
+    <a href="#anatomy"><span lang="en">Anatomy</span><span lang="zh-CN">拆解</span></a>
     <a href="#compose"><span lang="en">Compose</span><span lang="zh-CN">组合</span></a>
   </div>
   <div class="lang-toggle" role="group" aria-label="Language">
@@ -67,12 +68,12 @@
     </p>
     <div class="cta rv">
       <a class="btn primary" href="#trailer"><svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg><span lang="en">Watch the trailer</span><span lang="zh-CN">观看预告片</span></a>
-      <a class="btn" href="#films"><span lang="en">Full films · ~25 min</span><span lang="zh-CN">完整影片 · 约 25 分钟</span></a>
+      <a class="btn" href="#films"><span lang="en">Full films · ~32 min</span><span lang="zh-CN">完整影片 · 约 32 分钟</span></a>
     </div>
     <div class="hero-meta rv">
       <span><b>1</b> <span lang="en">equation</span><span lang="zh-CN">个公式</span></span>
       <span><b>6</b> <span lang="en">layers</span><span lang="zh-CN">层工具栈</span></span>
-      <span><b>19</b> <span lang="en">chapters</span><span lang="zh-CN">个章节</span></span>
+      <span><b>24</b> <span lang="en">chapters</span><span lang="zh-CN">个章节</span></span>
       <span><b>2</b> <span lang="en">languages</span><span lang="zh-CN">种语言</span></span>
     </div>
   </div>
@@ -85,15 +86,15 @@
     <p class="eyebrow rv"><span class="num">00</span><span lang="en">Trailer</span><span lang="zh-CN">预告片</span></p>
     <div class="split trailer-split">
       <div class="rv">
-        <h2><span lang="en">The whole system in <em>a hundred seconds.</em></span><span lang="zh-CN">一百秒，<em>看懂整套体系</em></span></h2>
+        <h2><span lang="en">The whole system in <em>under two minutes.</em></span><span lang="zh-CN">两分钟，<em>看懂整套体系</em></span></h2>
         <p class="muted">
-          <span lang="en">One gradient, two regimes, six layers, the arithmetic, the loop, and the rule that ties it together: own the math, reuse the runtime.</span>
-          <span lang="zh-CN">一个梯度、两种形态、六层工具栈、每层的算术、在线闭环，以及把它们串起来的原则：掌握数学，复用运行时。</span>
+          <span lang="en">One gradient, two regimes, six layers, the arithmetic, the loop, the anatomy of the frameworks, and the rule that ties it together: own the math, reuse the runtime.</span>
+          <span lang="zh-CN">一个梯度、两种形态、六层工具栈、每层的算术、在线闭环、框架的拆解，以及把它们串起来的原则：掌握数学，复用运行时。</span>
         </p>
       </div>
       <div class="rv">
         <div class="frame-bar">
-          <span class="label"><span lang="en">Trailer · 1:44</span><span lang="zh-CN">预告片 · 1:44</span></span>
+          <span class="label"><span lang="en">Trailer · 1:56</span><span lang="zh-CN">预告片 · 1:56</span></span>
           <div class="seg" role="group" aria-label="Trailer language">
             <button data-trailer="en" aria-pressed="true">English</button>
             <button data-trailer="zh" aria-pressed="false">中文</button>
@@ -115,8 +116,8 @@
     <p class="eyebrow rv"><span class="num">01</span><span lang="en">The films</span><span lang="zh-CN">完整影片</span></p>
     <h2 class="rv"><span lang="en">Two films, <em>one map.</em></span><span lang="zh-CN">两部影片，<em>一张地图</em></span></h2>
     <p class="lead rv">
-      <span lang="en">Nineteen chapters in five parts, with the equations on screen and the reasoning in the narration. The Chinese cut has no voice-over; its Chinese captions are on by default. Switch subtitles between English and Chinese at any time.</span>
-      <span lang="zh-CN">五个部分、十九个章节：屏幕上是公式，字幕里是推理。中文版不配音，默认显示中文字幕；字幕可随时在中英文之间切换。</span>
+      <span lang="en">Twenty-four chapters in six parts, with the equations on screen and the reasoning in the narration. The Chinese cut has no voice-over; its Chinese captions are on by default. Switch subtitles between English and Chinese at any time.</span>
+      <span lang="zh-CN">六个部分、二十四个章节：屏幕上是公式，字幕里是推理。中文版不配音，默认显示中文字幕；字幕可随时在中英文之间切换。</span>
     </p>
     <div class="frame-bar rv">
       <span class="label" id="film-label">Deep dive</span>
@@ -356,13 +357,53 @@
   </div>
 </section>
 
+<!-- ============================================================ ANATOMY -->
+<section id="anatomy">
+  <div class="wrap">
+    <p class="eyebrow rv"><span class="num">08</span><span lang="en">Part 5 · Anatomy</span><span lang="zh-CN">第五部分 · 拆解与组合</span></p>
+    <h2 class="rv"><span lang="en">Same atoms, different recipes. <em>Every term has an address.</em></span><span lang="zh-CN">同一批原子，不同的配方；<em>公式里每一项都有地址</em></span></h2>
+    <p class="lead rv"><span lang="en">The frameworks are permutations of a few shared atoms: one training backbone, one generation engine, one orchestrator, plus a connective layer of their own. What separates them is where each term of the objective lives in their code, and how deep you must dig to change it.</span><span lang="zh-CN">各个框架其实是少数几种共享“原子”的排列组合：一个训练底座、一个推理引擎、一个编排层，再加上它们自己的连接层。真正区分它们的，是目标函数里的每一项落在代码的哪个位置，以及想改它需要挖多深。</span></p>
+
+    <div class="sub-h rv"><span class="k">5.1</span><h3><span lang="en">Atoms → recipes</span><span lang="zh-CN">原子 → 配方</span></h3></div>
+    <p class="rv muted" style="max-width:72ch"><span lang="en">Click an atom to see who uses it; click a row for its data plane, weight path and composition limits. Underneath every row: PyTorch, <code>torch.distributed</code> / NCCL for tensors, and CUDA kernels.</span><span lang="zh-CN">点击一个原子，看哪些框架用了它；点击一行，查看它的数据面、权重路径与组合边界。每一行的底下都是同一层：PyTorch、负责张量通信的 <code>torch.distributed</code> / NCCL，以及 CUDA kernel。</span></p>
+    <div class="atoms rv" id="atoms" role="group" aria-label="Atoms"></div>
+    <div class="recipes-wrap rv">
+      <div class="tbl-wrap" id="recipes"></div>
+      <div class="card recipe-detail" id="recipe-detail"></div>
+    </div>
+    <p class="fine rv" style="margin-top:14px"><span lang="en">Rule: a recipe is a path that is already connected end to end (model → training backend → weight export → engine → trajectory → update). “Supports A”, “supports LoRA”, “supports Megatron”, “supports async” do not add up to A + LoRA + Megatron + async.</span><span lang="zh-CN">规则：一个配方是一条已经端到端贯通的路径（模型 → 训练后端 → 权重导出 → 推理引擎 → 轨迹 → 更新）。“支持 A”“支持 LoRA”“支持 Megatron”“支持异步”四个勾，加起来不等于 A + LoRA + Megatron + 异步。</span></p>
+
+    <div class="sub-h rv"><span class="k">5.2</span><h3><span lang="en">Four trade-off axes</span><span lang="zh-CN">四条取舍轴</span></h3></div>
+    <div class="axes rv" id="axes"></div>
+    <div class="card rv map-card" style="margin-top:20px">
+      <span class="tag"><span lang="en">Where each recipe sits · engineering judgment, not a measurement</span><span lang="zh-CN">各配方的位置 · 工程判断，不是测量</span></span>
+      <div id="anat-map"></div>
+    </div>
+
+    <div class="sub-h rv"><span class="k">5.3</span><h3><span lang="en">Every term of the objective has an address</span><span lang="zh-CN">目标函数里每一项的代码地址</span></h3></div>
+    <p class="rv muted" style="max-width:76ch"><span lang="en">Click a term in the formula (or a row) to see where it lives in each framework. Positions ①–⑥ are the <b style="color:var(--cyan)">data rule</b>: which samples enter and with what weight. ⑦–⑫ are the <b style="color:var(--amber)">learning rule</b>: what the update does with them. ⑬ closes the loop.</span><span lang="zh-CN">点击公式中的某一项（或表格中的某一行），查看它在每个框架里的位置。①–⑥ 是<b style="color:var(--cyan)">数据规则</b>：哪些样本进入、带多大权重；⑦–⑫ 是<b style="color:var(--amber)">学习规则</b>：更新拿这些样本做什么；⑬ 闭合循环。</span></p>
+    <div class="card rv anat-formula" id="anat-formula"></div>
+    <div class="card rv addr-detail" id="addr-detail"></div>
+    <div class="ladder rv" id="ladder"></div>
+    <div class="tbl-wrap rv addr-wrap" id="addr"></div>
+
+    <div class="sub-h rv"><span class="k">5.4</span><h3><span lang="en">Where is your change shallowest?</span><span lang="zh-CN">你的改动在哪条路线上最浅？</span></h3></div>
+    <p class="rv muted" style="max-width:76ch"><span lang="en">Tick the positions your idea changes (checkboxes in the table above), or start from a preset. Routes are ranked by the deepest level any of your changes needs.</span><span lang="zh-CN">勾选你的想法会改动的位置（上表中的复选框），或从预设开始。路线按你所有改动中需要的最深层级排序。</span></p>
+    <div class="filters rv" id="presets" role="group" aria-label="Presets"></div>
+    <div class="card rv" id="fit"></div>
+
+    <div class="sub-h rv"><span class="k">5.5</span><h3><span lang="en">Three changes, traced</span><span lang="zh-CN">三个改动，逐项追踪</span></h3></div>
+    <div class="grid g3 rv" id="traces"></div>
+  </div>
+</section>
+
 <!-- ============================================================ COMPOSE -->
 <section id="compose">
   <div class="wrap">
-    <p class="eyebrow rv"><span class="num">08</span><span lang="en">Part 5 · Choose &amp; compose</span><span lang="zh-CN">第五部分 · 选型与组合</span></p>
+    <p class="eyebrow rv"><span class="num">09</span><span lang="en">Part 6 · Choose &amp; compose</span><span lang="zh-CN">第六部分 · 选型与组合</span></p>
     <h2 class="rv"><span lang="en">Own the trajectory contract. <em>Reuse the runtime.</em></span><span lang="zh-CN">自己掌握轨迹契约，<em>复用运行时</em></span></h2>
 
-    <div class="sub-h rv"><span class="k">5.1</span><h3><span lang="en">A decision procedure</span><span lang="zh-CN">选型决策流程</span></h3></div>
+    <div class="sub-h rv"><span class="k">6.1</span><h3><span lang="en">A decision procedure</span><span lang="zh-CN">选型决策流程</span></h3></div>
     <div class="decide rv">
       <div>
         <div class="q on" id="q1">
@@ -381,7 +422,7 @@
     </div>
     <div class="grid g4 rv" style="margin-top:20px" id="special"></div>
 
-    <div class="sub-h rv"><span class="k">5.2</span><h3><span lang="en">The trajectory contract and a minimal architecture</span><span lang="zh-CN">轨迹契约与最小架构</span></h3></div>
+    <div class="sub-h rv"><span class="k">6.2</span><h3><span lang="en">The trajectory contract and a minimal architecture</span><span lang="zh-CN">轨迹契约与最小架构</span></h3></div>
     <div class="split rv">
       <div>
         <p class="muted"><span lang="en">Define it yourself. Every field below is something a framework will otherwise decide for you, silently.</span><span lang="zh-CN">由你自己定义。下面每一项，如果你不定义，框架就会替你悄悄决定。</span></p>
@@ -398,7 +439,7 @@
       </div>
     </div>
 
-    <div class="sub-h rv"><span class="k">5.3</span><h3><span lang="en">Validate: two stages and a code checklist</span><span lang="zh-CN">验证：两阶段评测与源码检查清单</span></h3></div>
+    <div class="sub-h rv"><span class="k">6.3</span><h3><span lang="en">Validate: two stages and a code checklist</span><span lang="zh-CN">验证：两阶段评测与源码检查清单</span></h3></div>
     <div class="grid g2 rv">
       <div class="card accent-top" style="--c: var(--teal)">
         <span class="tag"><span lang="en">Stage 1 · fixed trajectories → numeric parity</span><span lang="zh-CN">阶段一 · 固定轨迹 → 数值对齐</span></span>
@@ -421,7 +462,7 @@
 <!-- ============================================================ TAKEAWAYS -->
 <section id="takeaways">
   <div class="wrap">
-    <p class="eyebrow rv"><span class="num">09</span><span lang="en">Summary</span><span lang="zh-CN">总结</span></p>
+    <p class="eyebrow rv"><span class="num">10</span><span lang="en">Summary</span><span lang="zh-CN">总结</span></p>
     <h2 class="rv"><span lang="en">Five <em>takeaways.</em></span><span lang="zh-CN">五条<em>结论</em></span></h2>
     <div class="takeaways rv" id="takeaways-list"></div>
   </div>
@@ -456,6 +497,7 @@
 
 <script defer src="assets/katex/katex.min.js"></script>
 <script defer src="assets/chapters.js"></script>
+<script defer src="assets/anatomy.js"></script>
 <script defer src="assets/app.js"></script>
 </body>
 </html>
