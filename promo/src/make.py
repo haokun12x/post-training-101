@@ -1,6 +1,8 @@
 """Build the finished promo: audio mix + rendered frames + subtitles → mp4.
 
-usage: python make.py en|zh|both [--fps 60] [--audio-only]
+usage: python make.py en|zh|both [--fps 60] [--audio-only] [--mux-only]
+
+The Chinese cut is music-only (no narration; captions are burned in).
 """
 import argparse
 import os
@@ -49,7 +51,7 @@ def main():
     tl = build()
     for lang in (["en", "zh"] if a.lang == "both" else [a.lang]):
         wav = os.path.join(BUILD, f"promo_audio_{lang}.wav")
-        sf.write(wav, make_audio(tl, lang), SR, subtype="FLOAT")
+        sf.write(wav, make_audio(tl, lang, narration=(lang != "zh")), SR, subtype="FLOAT")
         srt = os.path.join(OUT, f"promo_{lang}.srt")
         write_srt(tl, lang, srt)
         print("audio", wav, flush=True)

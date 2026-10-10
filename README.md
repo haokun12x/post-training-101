@@ -17,8 +17,8 @@ where frameworks really differ, and how to compose them.
 | Path | What |
 |---|---|
 | `docs/` | The website (GitHub Pages): interactive knowledge map, calculators, both films with chapters and bilingual subtitles, the trailers |
-| `docs/media/full_en.mp4`, `full_zh.mp4` | ~25-minute narrated deep dives, English and Chinese (19 chapters) |
-| `docs/media/promo_en.mp4`, `promo_zh.mp4` | 1:44 trailers for video platforms (1080p60, captions burned in + soft subtitle track) |
+| `docs/media/full_en.mp4`, `full_zh.mp4` | ~25-minute deep dives (19 chapters): English with narration; Chinese captioned, no voice-over |
+| `docs/media/promo_en.mp4`, `promo_zh.mp4` | 1:44 trailers for video platforms (1080p60, captions burned in + soft subtitle track); the Chinese trailer is music-only |
 | `docs/media/script_bilingual.md` | Side-by-side EN / 中文 narration script with timestamps |
 | `reports/` | The two source research reports (framework survey + source-code engineering review, as of 2026-10-10) |
 | `video/` | Source of the long films: slide engine, scenes, offline TTS, assembler |
@@ -33,13 +33,15 @@ Inter and Noto Sans/Serif CJK fonts, and system `libespeak-ng`. A CUDA GPU makes
 ```bash
 # long films (see video/README.md)
 cd video/src && python build.py both && python make_script.py
+# the published Chinese film carries no voice-over: drop its audio track
+ffmpeg -i video/output/post_training_systems_zh.mp4 -map 0:v -map 0:s -c copy -movflags +faststart docs/media/full_zh.mp4
 # trailers: narration → timeline → score + frames → mux
 cd promo/src && python make.py both
 # website chapter data
 python site_tools/export_chapters.py
 ```
 
-Narration is synthesized offline with Kokoro-82M (`af_heart`) and Kokoro-82M-v1.1-zh (`zf_001`).
+English narration is synthesized offline with Kokoro-82M (`af_heart`). The Chinese film and trailer are published without voice-over (captions only).
 The trailer's music and sound design are synthesized procedurally in `promo/src/music.py` (no samples).
 
 No unified GPU benchmark was run for the comparisons: recommendations are engineering judgments, not a speed ranking.

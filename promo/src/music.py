@@ -201,7 +201,7 @@ PROG = [  # (pad voicing, bass root), two bars each
 ]
 
 
-def make_audio(tl, lang):
+def make_audio(tl, lang, narration=True):
     beat, bar = tl["beat"], tl["bar"]
     total = tl["total"]
     n = int((total + 1.0) * SR)
@@ -342,7 +342,7 @@ def make_audio(tl, lang):
     sfx.add(drone, 0.0, 0.22)
 
     # ---- narration
-    for s in tl["shots"]:
+    for s in tl["shots"] if narration else []:
         for c in s["cues"][lang]:
             voice.add(resample_24_48(c["audio"]), c["t"], 1.0)
     voice.x = fft_filter(voice.x, hp(85, 2))
