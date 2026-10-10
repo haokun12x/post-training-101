@@ -490,7 +490,7 @@
     $("#dl-film").href = "media/full_" + l + ".mp4";
     $("#dl-srt-en").href = "media/full_" + l + ".en.srt";
     $("#dl-srt-zh").href = "media/full_" + l + ".zh.srt";
-    $("#film-label").textContent = l === "en" ? "Deep dive · English · " + mmss(CH.total.en || 0) : "完整版 · 中文 · " + mmss(CH.total.zh || 0);
+    $("#film-label").textContent = l === "en" ? "Deep dive · English · " + mmss(CH.total.en || 0) : "完整版 · 中文字幕版 · " + mmss(CH.total.zh || 0);
     renderChapters();
   }
   function renderChapters() {
