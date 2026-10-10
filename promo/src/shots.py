@@ -684,6 +684,98 @@ def shot_differ(f, t, cx):
                 f.rrect(vx + 230, yy - 5, 190 * fp, 10, 3, 0, col, a, fill=col, fill_alpha=0.6)
 
 
+ATOMS = [("FSDP2", BLUE), ("ZeRO", BLUE), ("Megatron", BLUE), ("vLLM", TEAL), ("SGLang", TEAL), ("Ray", CORAL)]
+RECIPES = [("OpenRLHF", ["Ray", "ZeRO", "vLLM"]), ("slime", ["Ray", "Megatron", "SGLang"]),
+           ("SkyRL", ["Ray", "FSDP2", "vLLM"]), ("verl", ["Ray", "FSDP2", "Megatron", "vLLM", "SGLang"]),
+           ("NeMo RL", ["Ray", "Megatron", "vLLM", "SGLang"])]
+ADDR = [  # (number, tex, color, address)
+    ("01", r"x\sim\mathcal D", CYAN, "custom_async_data_buffer_path"),
+    ("06", r"w_t=\pi_{\mathrm{old}}/\mu", CYAN, "custom TIS"),
+    ("07", r"\hat A_t", AMBER, "register_adv_est"),
+    ("09", r"\pi_\theta(\cdot\mid h_t)", AMBER, "custom_loss(logits)"),
+    ("12", r"\theta\leftarrow\mathrm{Opt}", PINK, "your learner"),
+]
+DEPTH = [("L0", "CONFIG", "配置", TEAL), ("L1", "HOOK", "钩子", GREEN), ("L2", "OVERRIDE", "覆写", AMBER),
+         ("L3", "FORK", "改源码", CORAL), ("L4", "CROSS BOUNDARIES", "跨边界", PINK)]
+
+
+def shot_anatomy(f, t, cx):
+    lang = cx.lang
+    a_out = 1 - smooth(ramp(t, cx.dur - 0.4, 0.38))
+    mono = "mono" if lang == "en" else "reg"
+    # phase envelopes: recipes → addresses → depth
+    a1 = smooth(ramp(t, cx.c(0) - 0.2, 0.5)) * (1 - smooth(ramp(t, cx.c(1) - 0.35, 0.35)))
+    a2 = smooth(ramp(t, cx.c(1) - 0.1, 0.5)) * a_out
+    a3 = smooth(ramp(t, cx.c(2) - 0.1, 0.5)) * a_out
+    f.text(L(lang, "ANATOMY", "拆解"), W / 2, 150, 22 if lang == "en" else 30, mono, DIM,
+           smooth(ramp(t, 0.0, 0.5)) * a_out, "ct", tracking=0.3 if lang == "en" else 0.2, lang=lang)
+    # ---- phase 1: atoms → recipes
+    if a1 > 0.01:
+        aw, ag = 190, 22
+        ax0 = (W - len(ATOMS) * aw - (len(ATOMS) - 1) * ag) / 2
+        apos = {}
+        for i, (nm, col) in enumerate(ATOMS):
+            x = ax0 + i * (aw + ag)
+            p = smooth(ramp(t, cx.c(0) + i * 0.08, 0.4)) * a1
+            f.rrect(x, 230, aw, 52, 10, 1.2, col, p, glow=0.5, gr=10, fill=col, fill_alpha=0.12)
+            f.text(nm, x + aw / 2, 256, 21, "mono", col, p, "cm", tracking=0.06)
+            apos[nm] = (x + aw / 2, 282)
+        for r, (fw, parts) in enumerate(RECIPES):
+            y = 400 + r * 92
+            t0 = cx.c(0) + 0.7 + r * 0.32
+            p = smooth(ramp(t, t0, 0.45)) * a1
+            if p <= 0:
+                continue
+            f.text(fw, 420, y, 34, "light", WHITE, p, "rm")
+            for j, nm in enumerate(parts):
+                col = dict(ATOMS)[nm]
+                q = out_cubic(ramp(t, t0 + 0.07 * j, 0.45))
+                x = 480 + j * 168
+                yy = y - 22 - (1 - q) * 30
+                f.rrect(x, yy, 152, 44, 10, 1.1, col, p * q, glow=0.4, gr=8, fill=col, fill_alpha=0.10)
+                f.text(nm, x + 76, yy + 22, 18, "mono", col, p * q, "cm")
+                if q < 1:  # a faint trace back to the atom it came from
+                    sx, sy = apos[nm]
+                    f.line((sx, sy), (x + 76, yy), 1, col, p * 0.35 * (1 - q), glow=0.3)
+            f.text(L(lang, "+ its own connective layer", "+ 自己的连接层"), 480 + len(parts) * 168 + 14, y, 18, mono, AMBER,
+                   p * smooth(ramp(t, t0 + 0.4, 0.4)) * 0.85, "lm", lang=lang)
+    # ---- phase 2: every term has an address
+    if a2 > 0.01:
+        n = len(ADDR)
+        colw = 345
+        x0 = (W - n * colw) / 2 + colw / 2
+        for i, (num, tx, col, addr) in enumerate(ADDR):
+            x = x0 + i * colw
+            t0 = cx.c(1) + 0.1 + i * 0.22
+            p = smooth(ramp(t, t0, 0.45)) * a2
+            if p <= 0:
+                continue
+            f.text(num, x, 300, 18, "mono", col, p, "cm", tracking=0.2)
+            f.blit(tex_sprite(tx, 46, col), x, 380, p, "cm")
+            lp = out_cubic(ramp(t, t0 + 0.25, 0.5))
+            f.line((x, 430), (x, 430 + 150 * lp), 1.2, col, p * 0.7, glow=0.6, gr=10)
+            if lp > 0.9:
+                f.circle((x, 584), 4, 0, col, p, glow=2, gr=10, fill=True)
+            q = smooth(ramp(t, t0 + 0.6, 0.4)) * p
+            f.rrect(x - 162, 606, 324, 52, 10, 1.1, col, q * 0.9, glow=0.3, gr=8, fill=(0.025, 0.035, 0.06), fill_alpha=0.7)
+            f.text(addr, x, 632, 17, "mono", WHITE, q, "cm")
+        f.text(L(lang, "DATA RULE", "数据规则"), x0 + 0.5 * colw, 730, 18, mono, CYAN, a2 * (1 - a3) * 0.9, "cm",
+               tracking=0.25 if lang == "en" else 0.1, lang=lang)
+        f.text(L(lang, "LEARNING RULE", "学习规则"), x0 + 3.0 * colw, 730, 18, mono, AMBER, a2 * (1 - a3) * 0.9, "cm",
+               tracking=0.25 if lang == "en" else 0.1, lang=lang)
+    # ---- phase 3: how deep must you dig
+    if a3 > 0.01:
+        for i, (k, en, zh, col) in enumerate(DEPTH):
+            y = 694 + i * 46
+            bw = 300 + 110 * i
+            bx = W / 2 - bw / 2
+            p = smooth(ramp(t, cx.c(2) + 0.1 + i * 0.12, 0.35)) * a3
+            hot = math.exp(-((t - (cx.c(2) + 0.5 + i * 0.25)) * 3.0) ** 2)
+            f.rrect(bx, y, bw, 36, 8, 1.1, col, p, glow=0.4 + hot, gr=10, fill=col, fill_alpha=0.10 + 0.25 * hot)
+            f.text(k, bx + 16, y + 18, 18, "mono", col, p, "lm")
+            f.text(L(lang, en, zh), W / 2, y + 18, 17, mono, WHITE, p * 0.9, "cm", tracking=0.18 if lang == "en" else 0.05, lang=lang)
+
+
 LAND = [
     ("verl", "FSDP · Megatron · vLLM/SGLang"), ("OpenRLHF", "Ray · DeepSpeed · vLLM"), ("slime", "Megatron · SGLang"),
     ("SkyRL", "FSDP2/Megatron · vLLM"), ("AReaL", "async-native · FSDP2 · Megatron"), ("NeMo RL", "Megatron-Core · DTensor"),
@@ -767,7 +859,7 @@ def shot_outro(f, t, cx):
     lw = out_expo(ramp(t, cx.c(0) + 0.4, 1.2)) * 420
     f.line((W / 2 - lw, 676), (W / 2 + lw, 676), 1, AMBER, 0.6 * a_end, glow=0.7, gr=12)
     p3 = smooth(ramp(t, cx.c(1) - 0.1, 0.6)) * a_end
-    f.text(L(lang, "FULL DEEP DIVE  ·  ~25 MIN  ·  ENGLISH + CHINESE", "完整版深度解读  ·  约 25 分钟  ·  中文 / ENGLISH"),
+    f.text(L(lang, "FULL DEEP DIVE  ·  ~32 MIN  ·  ENGLISH + CHINESE", "完整版深度解读  ·  约 32 分钟  ·  中文 / ENGLISH"),
            W / 2, 720, 20 if lang == "en" else 24, "mono" if lang == "en" else "reg", DIM, p3, "ct",
            tracking=0.25 if lang == "en" else 0.12, lang=lang)
     p4 = smooth(ramp(t, cx.c(1) + 0.9, 0.6)) * a_end
@@ -775,6 +867,6 @@ def shot_outro(f, t, cx):
 
 
 SHOT_FN = dict(open=shot_open, chaos=shot_chaos, equation=shot_equation, fork=shot_fork, stack=shot_stack,
-               math=shot_math, loop=shot_loop, differ=shot_differ, landscape=shot_landscape, rule=shot_rule,
+               math=shot_math, loop=shot_loop, differ=shot_differ, anatomy=shot_anatomy, landscape=shot_landscape, rule=shot_rule,
                outro=shot_outro)
-CAPTIONED = {"chaos", "equation", "fork", "stack", "math", "loop", "differ"}
+CAPTIONED = {"chaos", "equation", "fork", "stack", "math", "loop", "differ", "anatomy"}

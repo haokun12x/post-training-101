@@ -12,13 +12,14 @@ A narrated explainer video (English + Chinese), synthesized from the two reports
 | `*.en.srt`, `*.zh.srt` | Subtitle files for each video (own language follows the real audio; the other language is aligned per narration beat) |
 | `script_bilingual.md` | Side-by-side EN / 中文 narration script with scene timestamps |
 
-## Structure (19 scenes, 5 parts)
+## Structure (24 scenes, 6 parts)
 
 1. **One equation**: every method is ∇J = E_μ[Σ ψ_t ∇log π]; μ fixed → trainer problem, μ = π_θ → systems problem
 2. **The stack**: six layers; LoRA/QLoRA arithmetic; ZeRO/FSDP2/Megatron sharding math; generation engines and weight sync
 3. **Offline vs. online**: SFT/DPO and the normalizer; the RL loop, PPO/GRPO, the four probability tracks
 4. **Where systems differ**: step-time/Amdahl and published numbers; asynchrony mechanisms; five train–inference error sources (top-p math); six algorithmic freedoms (entropy-gradient example); framework entry points; landscape
-5. **Choose & compose**: trajectory contract, minimal architecture, decision procedure, two-stage validation
+5. **Anatomy**: frameworks as recipes of shared atoms (backbone × engine × orchestrator + connective layer); four trade-off axes; the objective with 13 numbered positions (data rule ①–⑥, learning rule ⑦–⑫, publish ⑬); the position × framework address book with depth levels L0–L4; three changes traced end to end
+6. **Choose & compose**: trajectory contract, minimal architecture, decision procedure, two-stage validation
 
 ## Rebuild
 

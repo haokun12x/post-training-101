@@ -75,35 +75,44 @@ train–inference consistency,
 01:10.744 --> 01:13.201
 and how much of the algorithm you can own.
 
-01:15.500 --> 01:16.480
+01:15.450 --> 01:19.292
+Look closer: every framework is a recipe of the same atoms.
+
+01:19.312 --> 01:22.438
+Every term of the objective has an address in the code.
+
+01:22.458 --> 01:24.550
+Know how deep your change must dig.
+
+01:27.500 --> 01:28.480
 verl.
 
-01:16.500 --> 01:17.980
+01:28.500 --> 01:29.980
 OpenRLHF.
 
-01:18.000 --> 01:18.980
+01:30.000 --> 01:30.980
 slime.
 
-01:19.000 --> 01:19.980
+01:31.000 --> 01:31.980
 SkyRL.
 
-01:20.000 --> 01:20.980
+01:32.000 --> 01:32.980
 AReaL.
 
-01:21.000 --> 01:21.980
+01:33.000 --> 01:33.980
 NeMo RL.
 
-01:22.000 --> 01:24.492
+01:34.000 --> 01:36.492
 Each one, a different set of trade-offs.
 
-01:27.450 --> 01:28.756
+01:39.450 --> 01:40.756
 So: own the math.
 
-01:28.776 --> 01:30.336
+01:40.776 --> 01:42.336
 Reuse the runtime.
 
-01:32.450 --> 01:35.051
+01:44.450 --> 01:47.051
 Post-Training Systems, Layer by Layer.
 
-01:35.071 --> 01:38.017
+01:47.071 --> 01:50.017
 The full deep dive, in English and Chinese.

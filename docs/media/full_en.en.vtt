@@ -51,1142 +51,1469 @@ Part four covers where systems really differ: step time, asynchrony, consistency
 01:00.719 --> 01:03.428
 and what algorithmic freedom actually means.
 
-01:03.728 --> 01:08.802
-Part five turns it all into a data contract, an architecture, a decision procedure,
+01:03.728 --> 01:08.186
+Part five takes the frameworks apart: the shared atoms they are built from,
 
-01:08.822 --> 01:10.397
+01:08.206 --> 01:10.037
+the trade-offs between recipes,
+
+01:10.057 --> 01:14.217
+and the exact address of every term of the objective in each codebase.
+
+01:14.517 --> 01:19.596
+Part six turns it all into a data contract, an architecture, a decision procedure,
+
+01:19.616 --> 01:21.213
 and a validation protocol.
 
-01:12.067 --> 01:13.040
+01:22.883 --> 01:23.856
 Start with the math.
 
-01:13.340 --> 01:16.874
+01:24.156 --> 01:27.689
 Almost every post-training method can be written as one gradient.
 
-01:17.174 --> 01:21.496
+01:27.989 --> 01:32.311
 Sample a prompt x and a response y from some data distribution mu,
 
-01:21.516 --> 01:26.628
+01:32.331 --> 01:37.443
 then push up the log-probability of each token, weighted by a coefficient psi.
 
-01:26.928 --> 01:31.684
+01:37.743 --> 01:42.499
 Methods differ in only two places: where mu comes from, and how psi is computed.
 
-01:32.554 --> 01:35.344
+01:43.369 --> 01:46.159
 Supervised fine-tuning uses a fixed dataset,
 
-01:35.364 --> 01:38.218
+01:46.179 --> 01:49.033
 and psi is one on the masked response tokens.
 
-01:38.518 --> 01:41.354
+01:49.333 --> 01:52.170
 DPO also uses fixed data, preference pairs,
 
-01:41.374 --> 01:47.200
+01:52.190 --> 01:58.016
 and psi is a sigmoid-weighted push up on the chosen answer and down on the rejected one.
 
-01:47.500 --> 01:53.035
+01:58.316 --> 02:03.850
 PPO and GRPO sample from the policy itself and weight tokens by a clipped
 
-01:53.055 --> 01:55.774
+02:03.870 --> 02:06.589
 importance ratio times an advantage.
 
-01:56.074 --> 02:01.018
+02:06.889 --> 02:11.834
 On-policy distillation samples from the student and uses the teacher-minus-student
 
-02:01.038 --> 02:02.835
+02:11.854 --> 02:13.650
 log-probability as the signal.
 
-02:03.705 --> 02:06.952
+02:14.520 --> 02:17.768
 This one observation organizes the whole tool landscape.
 
-02:07.252 --> 02:11.738
+02:18.068 --> 02:22.554
 If mu is a fixed dataset, post-training is a trainer problem: load data,
 
-02:11.758 --> 02:14.054
+02:22.574 --> 02:24.869
 compute the loss, step the optimizer.
 
-02:14.354 --> 02:17.936
+02:25.169 --> 02:28.751
 If mu is the policy itself, it becomes a systems problem:
 
-02:17.956 --> 02:22.550
+02:28.771 --> 02:33.365
 you need a generation engine, reward computation, weight synchronization,
 
-02:22.570 --> 02:25.963
+02:33.385 --> 02:36.778
 and bookkeeping for which policy produced which token.
 
-02:26.262 --> 02:30.235
+02:37.078 --> 02:41.050
 That is why RL frameworks look so different from fine-tuning libraries.
 
-02:31.905 --> 02:32.718
+02:42.720 --> 02:43.534
 Now the stack.
 
-02:33.018 --> 02:36.988
+02:43.834 --> 02:47.803
 The source-code review organizes the ecosystem into six layers.
 
-02:37.288 --> 02:42.380
+02:48.103 --> 02:53.195
 On top is the algorithm layer: rewards, advantages, losses, critics, teachers,
 
-02:42.400 --> 02:43.494
+02:53.215 --> 02:54.309
 and update rules.
 
-02:43.794 --> 02:45.214
+02:54.609 --> 02:56.029
 That's where your research lives.
 
-02:45.514 --> 02:49.438
+02:56.329 --> 03:00.254
 Below it is the data and runtime layer: rollouts, environments,
 
-02:49.458 --> 02:54.072
+03:00.274 --> 03:04.887
 multi-turn trajectories, buffers, resource placement, and policy versions.
 
-02:54.372 --> 02:58.363
+03:05.187 --> 03:09.179
 This is what verl, OpenRLHF, SkyRL, AReaL, Miles,
 
-02:58.383 --> 03:01.393
+03:09.199 --> 03:12.208
 ROLL and NeMo RL actually compete on.
 
-03:02.263 --> 03:08.420
+03:13.078 --> 03:19.235
 Next is model execution: forward and backward passes, state sharding, and tensor,
 
-03:08.440 --> 03:13.835
+03:19.255 --> 03:24.650
 pipeline, expert and context parallelism, provided by FSDP2, DeepSpeed,
 
-03:13.855 --> 03:15.971
+03:24.670 --> 03:26.786
 Megatron-Core or TorchTitan.
 
-03:16.271 --> 03:18.955
+03:27.086 --> 03:29.770
 Beside it, but separate, is the generation layer.
 
-03:19.255 --> 03:25.101
+03:30.070 --> 03:35.917
 vLLM and SGLang handle batching, the KV cache, sampling, and hot weight updates.
 
-03:25.401 --> 03:27.008
+03:36.217 --> 03:37.823
 They never run a backward pass.
 
-03:27.878 --> 03:32.955
+03:38.693 --> 03:43.770
 At the bottom are parameterization and kernels, such as LoRA, quantization,
 
-03:32.975 --> 03:38.460
+03:43.790 --> 03:49.275
 fused losses and attention kernels, and the data quality and observability layer:
 
-03:38.480 --> 03:42.673
+03:49.295 --> 03:53.488
 data processing, verifiers, evaluation, logging and profiling.
 
-03:43.543 --> 03:47.634
+03:54.358 --> 03:58.449
 Two more layers sit beside this stack: agent and environment adapters,
 
-03:47.654 --> 03:50.217
+03:58.469 --> 04:01.033
 and hosted training services such as Tinker.
 
-03:50.517 --> 03:54.030
+04:01.333 --> 04:04.845
 Easy-to-use toolchains like LLaMA-Factory, ms-swift,
 
-03:54.050 --> 03:57.698
+04:04.865 --> 04:08.513
 Axolotl and Unsloth cut across several layers at once.
 
-03:57.998 --> 04:00.511
+04:08.813 --> 04:11.327
 The first rule of composition follows directly.
 
-04:00.811 --> 04:03.486
+04:11.627 --> 04:14.301
 A training backend cannot replace a rollout loop,
 
-04:03.506 --> 04:06.180
+04:14.321 --> 04:16.995
 and an inference engine cannot replace a trainer.
 
-04:06.480 --> 04:09.667
+04:17.295 --> 04:20.482
 Pick one component per role, then verify the whole path.
 
-04:11.337 --> 04:14.258
+04:22.152 --> 04:25.073
 Let's walk the layers with math, starting near the bottom.
 
-04:14.558 --> 04:20.127
+04:25.373 --> 04:30.942
 LoRA freezes the pretrained weight W-zero and learns a low-rank update: B times A,
 
-04:20.147 --> 04:21.695
+04:30.962 --> 04:32.510
 scaled by alpha over r.
 
-04:21.995 --> 04:25.646
+04:32.810 --> 04:36.461
 B starts at zero, so training begins exactly at the base model.
 
-04:25.946 --> 04:30.089
+04:36.761 --> 04:40.904
 Trainable parameters drop from d times k to r times d-plus-k.
 
-04:30.389 --> 04:33.503
+04:41.204 --> 04:44.319
 For a 4096 by 4096 projection at rank 8,
 
-04:33.523 --> 04:40.007
+04:44.339 --> 04:50.822
 that's about sixty-five thousand parameters instead of sixteen point eight million:
 
-04:40.027 --> 04:41.574
+04:50.842 --> 04:52.389
 roughly 0.4 percent.
 
-04:42.444 --> 04:45.159
+04:53.259 --> 04:55.974
 Why this matters becomes clear from memory accounting.
 
-04:45.459 --> 04:51.449
+04:56.274 --> 05:02.264
 Full fine-tuning with mixed-precision Adam stores about sixteen bytes per parameter:
 
-04:51.469 --> 04:54.311
+05:02.284 --> 05:05.126
 two for bf16 weights, two for gradients,
 
-04:54.331 --> 04:58.675
+05:05.146 --> 05:09.491
 and twelve for the fp32 master copy and the two Adam moments.
 
-04:58.975 --> 05:04.619
+05:09.791 --> 05:15.434
 A 7-billion-parameter model needs about 112 gigabytes before activations.
 
-05:04.919 --> 05:08.453
+05:15.734 --> 05:19.269
 With LoRA, the frozen base costs about two bytes per parameter.
 
-05:08.753 --> 05:14.393
+05:19.569 --> 05:25.208
 QLoRA stores the base in 4-bit NormalFloat, about half a byte per parameter,
 
-05:14.413 --> 05:20.872
+05:25.228 --> 05:31.687
 which is how the QLoRA paper fine-tuned a 65-billion model on a single 48-gigabyte GPU.
 
-05:21.742 --> 05:25.285
+05:32.557 --> 05:36.100
 In tools: PEFT injects adapters with get_peft_model,
 
-05:25.305 --> 05:29.464
+05:36.120 --> 05:40.279
 bitsandbytes supplies the 4-bit storage and 8-bit optimizers,
 
-05:29.484 --> 05:32.684
+05:40.299 --> 05:43.499
 and Unsloth fuses kernels for memory and speed.
 
-05:32.984 --> 05:37.539
+05:43.799 --> 05:48.354
 One engineering caveat: training only LoRA does not mean syncing only LoRA.
 
-05:37.839 --> 05:41.690
+05:48.654 --> 05:52.505
 In online RL, some integrations merge the adapter into the base,
 
-05:41.710 --> 05:46.045
+05:52.525 --> 05:56.860
 or gather the full weights, before pushing them to the inference engine.
 
-05:47.715 --> 05:49.343
+05:58.530 --> 06:00.158
 One layer up is execution,
 
-05:49.363 --> 05:53.082
+06:00.178 --> 06:03.897
 and ZeRO's analysis is the cleanest way to reason about it.
 
-05:53.382 --> 05:57.751
+06:04.197 --> 06:08.566
 Let psi be the parameter count, K the optimizer bytes per parameter,
 
-05:57.771 --> 06:01.495
+06:08.586 --> 06:12.310
 twelve for mixed-precision Adam, and N the number of GPUs.
 
-06:01.795 --> 06:06.322
+06:12.610 --> 06:17.137
 Plain data parallelism replicates everything: sixteen psi per GPU.
 
-06:06.622 --> 06:11.927
+06:17.437 --> 06:22.742
 ZeRO stage one shards the optimizer states, stage two also shards gradients,
 
-06:11.947 --> 06:17.112
+06:22.762 --> 06:27.928
 and stage three, which is also what FSDP2 does, shards the parameters too.
 
-06:17.412 --> 06:25.933
+06:28.228 --> 06:36.748
 For a 7.5-billion model on 64 GPUs, that's 120 gigabytes per GPU, then 31, then 17,
 
-06:25.953 --> 06:27.991
+06:36.768 --> 06:38.806
 and finally under 2.
 
-06:28.861 --> 06:30.648
+06:39.676 --> 06:41.463
 Three backends implement this layer.
 
-06:30.948 --> 06:37.180
+06:41.763 --> 06:47.995
 FSDP2 shards each parameter as a DTensor and keeps ordinary PyTorch control flow.
 
-06:37.480 --> 06:44.250
+06:48.295 --> 06:55.065
 DeepSpeed adds offload to CPU and NVMe, plus AutoTP, AutoEP and its hybrid engine.
 
-06:44.550 --> 06:47.304
+06:55.365 --> 06:58.120
 Megatron-Core brings tensor, pipeline,
 
-06:47.324 --> 06:52.196
+06:58.140 --> 07:03.011
 expert and context parallelism for very large dense and MoE models.
 
-06:52.496 --> 06:54.439
+07:03.311 --> 07:05.254
 Each has a contract you must respect.
 
-06:54.739 --> 06:58.317
+07:05.554 --> 07:09.132
 In FSDP2, the local shard is not the full tensor.
 
-06:58.617 --> 07:02.410
+07:09.432 --> 07:13.226
 In DeepSpeed, the engine owns gradient-accumulation boundaries.
 
-07:02.710 --> 07:05.912
+07:13.526 --> 07:16.728
 In Megatron, the pipeline schedule owns the backward pass.
 
-07:06.782 --> 07:07.954
+07:17.598 --> 07:18.769
 Composition rules.
 
-07:08.254 --> 07:13.348
+07:19.069 --> 07:24.163
 FSDP2 and ZeRO-3 are alternative ways to manage the same model's state,
 
-07:13.368 --> 07:15.869
+07:24.183 --> 07:26.684
 so don't wrap one inside the other.
 
-07:16.169 --> 07:20.244
+07:26.984 --> 07:31.060
 Ray orchestrates processes and resources, while NCCL moves tensors;
 
-07:20.544 --> 07:22.003
+07:31.360 --> 07:32.818
 they live at different layers.
 
-07:22.303 --> 07:23.289
+07:33.118 --> 07:34.104
 And a classic bug:
 
-07:23.309 --> 07:28.097
+07:34.124 --> 07:38.912
 dividing the loss by the accumulation steps yourself while the engine scales it again,
 
-07:28.117 --> 07:30.053
+07:38.932 --> 07:40.869
 which shrinks your gradients twice.
 
-07:30.923 --> 07:32.733
+07:41.739 --> 07:43.548
 And a correction worth stating plainly.
 
-07:33.033 --> 07:37.526
+07:43.848 --> 07:48.341
 DeepSpeed, DeepSpeed-Chat and OpenRLHF are three different things.
 
-07:37.826 --> 07:40.213
+07:48.641 --> 07:51.028
 DeepSpeed is execution infrastructure.
 
-07:40.513 --> 07:45.229
+07:51.328 --> 07:56.044
 DeepSpeed-Chat is one classic three-stage RLHF application built on it.
 
-07:45.529 --> 07:49.587
+07:56.344 --> 08:00.403
 OpenRLHF is a Ray pipeline that still trains with DeepSpeed.
 
-07:49.887 --> 07:53.196
+08:00.703 --> 08:04.012
 With identical math, sharding changes the cost of training,
 
-07:53.216 --> 07:55.002
+08:04.032 --> 08:05.817
 not the objective being learned.
 
-07:56.672 --> 07:58.912
+08:07.487 --> 08:09.727
 The generation layer has different physics.
 
-07:59.212 --> 08:02.663
+08:10.027 --> 08:13.478
 Prefill processes the prompt in parallel and is compute-bound.
 
-08:02.963 --> 08:04.881
+08:13.778 --> 08:15.696
 Decode emits one token per step,
 
-08:04.901 --> 08:09.059
+08:15.716 --> 08:19.875
 and every step must re-read the weights and the KV cache from memory,
 
-08:09.079 --> 08:10.513
+08:19.895 --> 08:21.328
 so it's bandwidth-bound.
 
-08:10.813 --> 08:15.330
+08:21.628 --> 08:26.145
 That's why engines like vLLM and SGLang exist: paged KV cache,
 
-08:15.350 --> 08:21.258
+08:26.165 --> 08:32.073
 continuous batching and prefix sharing let many sequences share each weight read.
 
-08:21.558 --> 08:23.202
+08:32.373 --> 08:34.017
 With long reasoning traces,
 
-08:23.222 --> 08:27.578
+08:34.037 --> 08:38.393
 this autoregressive phase is frequently the largest part of an RL step.
 
-08:28.448 --> 08:33.002
+08:39.263 --> 08:43.817
 The trainer and the engine also lay out the same weights differently:
 
-08:33.022 --> 08:36.117
+08:43.837 --> 08:46.933
 FSDP shards or Megatron partitions on one side,
 
-08:36.137 --> 08:38.902
+08:46.953 --> 08:49.717
 inference tensor parallelism on the other.
 
-08:39.202 --> 08:43.574
+08:50.017 --> 08:54.389
 So every policy update means resharding, possibly converting precision,
 
-08:43.594 --> 08:45.244
+08:54.409 --> 08:56.059
 transferring and reloading.
 
-08:45.544 --> 08:47.888
+08:56.359 --> 08:58.704
 vLLM now separates the weight source,
 
-08:47.908 --> 08:52.042
+08:58.724 --> 09:02.857
 the trainer-side transfer engine and the inference-side receiver.
 
-08:52.342 --> 08:56.732
+09:03.157 --> 09:07.548
 SGLang supports updates from disk, tensors or a distributed group,
 
-08:56.752 --> 08:58.202
+09:07.568 --> 09:09.018
 with pause and resume.
 
-08:58.502 --> 08:59.829
+09:09.318 --> 09:10.644
 Weight sync is not plumbing;
 
-09:00.129 --> 09:01.464
+09:10.944 --> 09:12.279
 it's a protocol boundary.
 
-09:02.334 --> 09:03.340
+09:13.149 --> 09:14.155
 A practical rule:
 
-09:03.360 --> 09:09.619
+09:14.175 --> 09:20.434
 anything the policy needs in order to generate must be representable in the engine and synced correctly.
 
-09:09.919 --> 09:11.729
+09:20.734 --> 09:22.544
 Learner-only parts like critics,
 
-09:11.749 --> 09:14.988
+09:22.564 --> 09:25.803
 Q-heads or target networks can stay on the training side.
 
-09:15.288 --> 09:19.892
+09:26.103 --> 09:30.707
 DeepSpeed's hybrid engine was an early answer to this tension: the same actor,
 
-09:19.912 --> 09:23.449
+09:30.727 --> 09:34.264
 switching between a training layout and a generation layout.
 
-09:25.119 --> 09:27.235
+09:35.934 --> 09:38.050
 Part three: offline versus online.
 
-09:27.535 --> 09:29.662
+09:38.350 --> 09:40.477
 Offline methods train on a fixed dataset.
 
-09:29.962 --> 09:33.085
+09:40.777 --> 09:43.901
 SFT minimizes masked negative log-likelihood.
 
-09:33.385 --> 09:40.189
+09:44.201 --> 09:51.004
 DPO turns a preference pair into a logistic loss on the difference of policy-to-reference log-ratios,
 
-09:40.209 --> 09:41.203
+09:51.024 --> 09:52.018
 scaled by beta.
 
-09:41.503 --> 09:43.515
+09:52.318 --> 09:54.330
 Neither needs a generation engine,
 
-09:43.535 --> 09:47.997
+09:54.350 --> 09:58.813
 and the frozen reference model's log-probabilities can even be precomputed.
 
-09:48.867 --> 09:50.976
+09:59.683 --> 10:01.791
 The subtle part is the normalizer Z.
 
-09:51.276 --> 09:54.051
+10:02.091 --> 10:04.867
 It looks like a detail, but it's part of the objective.
 
-09:54.351 --> 09:56.637
+10:05.167 --> 10:07.452
 Token-mean gives every token the same weight.
 
-09:56.937 --> 10:00.385
+10:07.752 --> 10:11.200
 Sequence-mean averages within each response first,
 
-10:00.405 --> 10:06.697
+10:11.220 --> 10:17.512
 so a token in a 1000-token answer weighs ten times less than a token in a 100-token answer.
 
-10:06.997 --> 10:09.955
+10:17.812 --> 10:20.770
 And with gradient accumulation or multiple ranks,
 
-10:09.975 --> 10:12.933
+10:20.790 --> 10:23.748
 an average of local means is not the global mean.
 
-10:13.233 --> 10:14.480
+10:24.048 --> 10:25.295
 These aren't system knobs;
 
-10:14.780 --> 10:16.188
+10:25.595 --> 10:27.003
 they change what you optimize.
 
-10:17.058 --> 10:23.247
+10:27.873 --> 10:34.062
 The standard offline composition is: Transformers for the model, PEFT for adapters,
 
-10:23.267 --> 10:28.932
+10:34.082 --> 10:39.748
 bitsandbytes when memory is tight, Accelerate, DeepSpeed or FSDP2 for scale,
 
-10:28.952 --> 10:33.496
+10:39.768 --> 10:44.311
 and TRL's SFT or DPO trainer for the objective and lifecycle.
 
-10:33.796 --> 10:34.788
+10:44.611 --> 10:45.603
 LLaMA-Factory,
 
-10:34.808 --> 10:39.847
+10:45.623 --> 10:50.662
 ms-swift and Axolotl package the same pieces as config-driven recipes,
 
-10:39.867 --> 10:42.738
+10:50.682 --> 10:53.554
 and Unsloth focuses on memory and speed.
 
-10:43.608 --> 10:48.597
+10:54.424 --> 10:59.412
 One efficiency boundary from the code review: in the TRL snapshot reviewed,
 
-10:48.617 --> 10:52.804
+10:59.432 --> 11:03.619
 a custom compute-loss function runs a full-logits forward pass,
 
-10:52.824 --> 10:56.076
+11:03.639 --> 11:06.891
 plus an extra no-gradient fused pass for metrics,
 
-10:56.096 --> 10:59.214
+11:06.911 --> 11:10.029
 while the default path can use a fused LM head.
 
-10:59.514 --> 11:01.055
+11:10.329 --> 11:11.870
 So when you change the loss,
 
-11:01.075 --> 11:04.733
+11:11.890 --> 11:15.548
 re-check memory and throughput instead of inheriting the defaults.
 
-11:06.403 --> 11:08.044
+11:17.218 --> 11:18.859
 Online RL closes a loop.
 
-11:08.344 --> 11:11.947
+11:19.159 --> 11:22.763
 Sample prompts, generate rollouts with the inference engine,
 
-11:11.967 --> 11:16.598
+11:22.783 --> 11:27.413
 score them with a reward model, verifier or environment, estimate advantages,
 
-11:16.618 --> 11:20.584
+11:27.433 --> 11:31.400
 update the learner, publish new weights to the engine, and repeat.
 
-11:20.884 --> 11:24.966
+11:31.700 --> 11:35.781
 Every arrow in this loop is a place where a framework makes design decisions.
 
-11:25.836 --> 11:27.281
+11:36.652 --> 11:38.097
 The objectives are compact.
 
-11:27.581 --> 11:29.869
+11:38.397 --> 11:40.684
 PPO maximizes a clipped surrogate:
 
-11:29.889 --> 11:35.163
+11:40.704 --> 11:45.978
 the probability ratio between the current and old policy, times the advantage,
 
-11:35.183 --> 11:37.674
+11:45.998 --> 11:48.489
 clipped to one plus or minus epsilon.
 
-11:37.974 --> 11:39.836
+11:48.789 --> 11:50.651
 GRPO removes the critic.
 
-11:40.136 --> 11:45.356
+11:50.951 --> 11:56.172
 It samples a group of G responses per prompt and standardizes each reward against
 
-11:45.376 --> 11:47.815
+11:56.192 --> 11:58.630
 the group mean and standard deviation,
 
-11:47.835 --> 11:51.244
+11:58.650 --> 12:02.059
 with an optional KL penalty toward a reference model.
 
-11:52.114 --> 11:54.446
+12:02.929 --> 12:05.261
 Here's what separates careful implementations.
 
-11:54.746 --> 11:56.500
+12:05.561 --> 12:07.315
 There are four probability tracks.
 
-11:56.800 --> 12:01.026
+12:07.615 --> 12:11.842
 Mu is the behavior distribution the engine actually sampled from.
 
-12:01.326 --> 12:04.947
+12:12.142 --> 12:15.763
 Pi-old is the trainer's recomputation at the start of the step.
 
-12:05.247 --> 12:07.917
+12:16.063 --> 12:18.732
 Pi-theta is the current, differentiable policy.
 
-12:08.217 --> 12:11.724
+12:19.032 --> 12:22.539
 And pi-ref is the KL anchor, or a teacher in distillation.
 
-12:12.024 --> 12:18.024
+12:22.839 --> 12:28.839
 The true importance weight factorizes into the PPO ratio times a train-inference mismatch term.
 
-12:18.324 --> 12:21.997
+12:29.139 --> 12:32.813
 OpenRLHF, AReaL and others keep these tracks separate,
 
-12:22.017 --> 12:25.896
+12:32.833 --> 12:36.712
 and truncated importance sampling caps the mismatch term.
 
-12:27.566 --> 12:29.835
+12:38.382 --> 12:40.650
 Part four is where systems really differ.
 
-12:30.135 --> 12:33.831
+12:40.950 --> 12:44.646
 Write down the time of one synchronous step: generation, reward,
 
-12:33.851 --> 12:36.270
+12:44.666 --> 12:47.085
 training and weight sync, all in sequence.
 
-12:36.570 --> 12:38.977
+12:47.385 --> 12:49.793
 With pipelining on independent resources,
 
-12:38.997 --> 12:43.715
+12:49.813 --> 12:54.530
 the ideal step time approaches the slower of generation and training, plus sync.
 
-12:44.015 --> 12:45.740
+12:54.830 --> 12:56.556
 Amdahl's law sets the priority.
 
-12:46.040 --> 12:48.515
+12:56.856 --> 12:59.330
 If generation is 80 percent of the step,
 
-12:48.535 --> 12:51.820
+12:59.350 --> 13:02.635
 making training twice as fast saves only ten percent.
 
-12:52.690 --> 12:56.532
+13:03.505 --> 13:07.348
 Published numbers confirm that async is not automatically faster.
 
-12:56.832 --> 12:59.660
+13:07.648 --> 13:10.475
 In NeMo RL's performance table,
 
-12:59.680 --> 13:08.386
+13:10.495 --> 13:19.201
 DeepSeek-V3 on 512 H100s dropped from 111 to about 64 seconds per step with one-step-off async.
 
-13:08.686 --> 13:15.104
+13:19.501 --> 13:25.919
 But Qwen3 30B-A3B on 16 GB200s went from 221 to 301 seconds:
 
-13:15.124 --> 13:18.859
+13:25.939 --> 13:29.675
 splitting resources made it slower.
 
-13:19.159 --> 13:24.653
+13:29.975 --> 13:35.468
 And Miles cut a trillion-parameter Kimi K2 weight update from 53 seconds with NCCL
 
-13:24.673 --> 13:28.419
+13:35.488 --> 13:39.234
 broadcast to about 7 seconds with peer-to-peer transfer,
 
-13:28.439 --> 13:32.184
+13:39.254 --> 13:42.999
 which shows weight sync can be a first-class bottleneck.
 
-13:33.054 --> 13:38.428
+13:43.869 --> 13:49.243
 So the metric that matters is cost to target: total GPU-hours, across all roles,
 
-13:38.448 --> 13:40.788
+13:49.263 --> 13:51.603
 to reach the same validation score.
 
-13:41.088 --> 13:44.637
+13:51.903 --> 13:55.452
 Tokens per second can reward long, useless generations;
 
-13:44.937 --> 13:47.258
+13:55.752 --> 13:58.073
 steps per second can hide smaller batches;
 
-13:47.558 --> 13:49.588
+13:58.373 --> 14:00.403
 wall time can hide extra GPUs.
 
-13:49.888 --> 13:52.705
+14:00.703 --> 14:03.520
 Profile each phase, and fix the biggest one first.
 
-13:54.375 --> 13:56.121
+14:05.190 --> 14:06.936
 Asynchrony introduces staleness.
 
-13:56.421 --> 14:01.731
+14:07.236 --> 14:12.546
 Define a sample's age as the learner's current version minus the version that generated it.
 
-14:02.031 --> 14:06.846
+14:12.846 --> 14:17.661
 With mid-flight weight updates, one trajectory can even span several versions,
 
-14:06.866 --> 14:10.503
+14:17.681 --> 14:21.319
 so the version belongs to token spans, not just to samples.
 
-14:10.803 --> 14:15.527
+14:21.619 --> 14:26.343
 A strict gate only consumes data with age at most k, and importance weights,
 
-14:15.547 --> 14:18.461
+14:26.363 --> 14:29.276
 usually truncated, correct the remaining shift.
 
-14:19.331 --> 14:22.986
+14:30.146 --> 14:33.801
 The key insight from the code review is that async is not a boolean.
 
-14:23.286 --> 14:26.133
+14:34.101 --> 14:36.948
 A bounded queue limits how far producers run ahead,
 
-14:26.153 --> 14:29.057
+14:36.968 --> 14:39.872
 but not the age of each sample when it's trained on.
 
-14:29.357 --> 14:32.230
+14:40.172 --> 14:43.045
 An admission window decides whether new tasks start,
 
-14:32.250 --> 14:34.955
+14:43.065 --> 14:45.770
 but a slow in-flight task can still finish stale.
 
-14:35.255 --> 14:37.614
+14:46.070 --> 14:48.430
 A consume-time gate filters by version,
 
-14:37.634 --> 14:40.726
+14:48.450 --> 14:51.541
 but dropping samples changes the data distribution.
 
-14:41.026 --> 14:45.833
+14:51.841 --> 14:56.649
 Importance correction fixes known probability shifts, but not for free in variance.
 
-14:46.133 --> 14:50.480
+14:56.949 --> 15:01.296
 And mid-flight updates buy overlap at the cost of mixed-policy trajectories.
 
-14:51.350 --> 14:53.633
+15:02.166 --> 15:04.448
 Real frameworks implement different subsets.
 
-14:53.933 --> 14:56.808
+15:04.748 --> 15:07.623
 OpenRLHF mainly uses queue back-pressure.
 
-14:57.108 --> 15:00.893
+15:07.923 --> 15:11.708
 SkyRL's staleness setting governs admission and capacity.
 
-15:01.193 --> 15:06.542
+15:12.008 --> 15:17.357
 Miles and prime-rl can filter by age at consumption, and verl offers drop or wait.
 
-15:06.842 --> 15:10.709
+15:17.657 --> 15:21.524
 A staleness value of two may not mean the same age in two frameworks.
 
-15:11.009 --> 15:13.186
+15:21.824 --> 15:24.001
 And if long trajectories are discarded,
 
-15:13.206 --> 15:15.778
+15:24.021 --> 15:26.593
 hard problems quietly disappear from training.
 
-15:16.078 --> 15:18.817
+15:26.893 --> 15:29.632
 Measure age, length and difficulty explicitly.
 
-15:20.487 --> 15:25.585
+15:31.302 --> 15:36.400
 Consistency between training and inference has at least five independent sources of error.
 
-15:25.885 --> 15:31.501
+15:36.700 --> 15:42.316
 Re-tokenizing text can change the token sequence, so store the exact generated IDs.
 
-15:31.801 --> 15:35.962
+15:42.616 --> 15:46.778
 The behavior policy may be stale, so record versions and correct for it.
 
-15:36.262 --> 15:39.503
+15:47.078 --> 15:50.318
 MoE routers may pick different experts in the trainer,
 
-15:39.523 --> 15:41.556
+15:50.338 --> 15:52.371
 so replay the rollout-time routes.
 
-15:41.856 --> 15:45.089
+15:52.671 --> 15:55.904
 Top-p or top-k sampling truncates the distribution.
 
-15:45.389 --> 15:46.466
+15:56.204 --> 15:57.282
 And different kernels,
 
-15:46.486 --> 15:50.207
+15:57.302 --> 16:01.022
 precision or batch shapes produce different log-probs for the same weights.
 
-15:50.507 --> 15:52.444
+16:01.322 --> 16:03.259
 Each mechanism fixes one source;
 
-15:52.744 --> 15:54.274
+16:03.559 --> 16:05.090
 none substitutes for another.
 
-15:55.144 --> 15:57.351
+16:05.960 --> 16:08.167
 The top-p case is a clean piece of math.
 
-15:57.651 --> 16:03.010
+16:08.467 --> 16:13.826
 Nucleus sampling draws from the smallest set S whose probability mass reaches p,
 
-16:03.030 --> 16:04.355
+16:13.846 --> 16:15.170
 renormalized by Z_S.
 
-16:04.655 --> 16:08.133
+16:15.470 --> 16:18.948
 So the true behavior log-prob is log pi minus log Z_S.
 
-16:08.433 --> 16:11.926
+16:19.248 --> 16:22.741
 If the trainer recomputes a full-vocabulary softmax,
 
-16:11.946 --> 16:16.452
+16:22.761 --> 16:27.267
 every ratio is off by a factor Z_S that varies from token to token.
 
-16:16.752 --> 16:22.302
+16:27.567 --> 16:33.117
 Sampler-support replay fixes this by normalizing over the same candidate set during training.
 
-16:23.972 --> 16:27.502
+16:34.787 --> 16:38.318
 Now, what does it mean to customize every detail of an algorithm?
 
-16:27.802 --> 16:32.538
+16:38.618 --> 16:43.353
 There are six distinct freedoms: the objective, the estimator, the data lifetime,
 
-16:32.558 --> 16:36.001
+16:43.373 --> 16:46.816
 the model state, the update rule, and execution scheduling.
 
-16:36.301 --> 16:38.134
+16:47.116 --> 16:48.949
 Each needs a different kind of access.
 
-16:38.434 --> 16:42.068
+16:49.249 --> 16:52.883
 A custom-loss hook usually covers only part of the first row.
 
-16:42.368 --> 16:46.382
+16:53.183 --> 16:57.197
 A new critic, a target network or replay touches rows three to five,
 
-16:46.402 --> 16:49.645
+16:57.217 --> 17:00.460
 which live in the learner loop, not in a loss callback.
 
-16:50.515 --> 16:53.389
+17:01.330 --> 17:04.204
 Here's a concrete example of why the inputs matter.
 
-16:53.689 --> 16:57.193
+17:04.504 --> 17:08.009
 Exact entropy needs the full vocabulary distribution.
 
-16:57.493 --> 17:02.538
+17:08.309 --> 17:13.353
 If your hook only receives the log-prob of the sampled token, the naive move,
 
-17:02.558 --> 17:07.340
+17:13.373 --> 17:18.155
 adding minus log pi of that token as a bonus, has zero expected gradient,
 
-17:07.360 --> 17:11.681
+17:18.175 --> 17:22.496
 because the score function has mean zero under on-policy sampling.
 
-17:11.981 --> 17:15.392
+17:22.796 --> 17:26.208
 The correct estimator weights the score by the log-prob itself.
 
-17:15.692 --> 17:17.977
+17:26.508 --> 17:28.792
 And exact entropy needs full logits,
 
-17:17.997 --> 17:22.138
+17:28.812 --> 17:32.953
 which under tensor parallelism are sharded across the vocabulary.
 
-17:23.808 --> 17:27.375
+17:34.623 --> 17:38.190
 With those freedoms in mind, here's where each framework lets you in,
 
-17:27.395 --> 17:29.039
+17:38.210 --> 17:39.854
 based on the pinned source code.
 
-17:29.339 --> 17:32.609
+17:40.154 --> 17:43.425
 TRL gives you trainer subclasses and loss functions,
 
-17:32.629 --> 17:35.900
+17:43.445 --> 17:46.715
 but you inherit the upstream Transformers lifecycle.
 
-17:36.200 --> 17:41.089
+17:47.015 --> 17:51.904
 SkyRL has separate registries for policy losses and advantage estimators,
 
-17:41.109 --> 17:43.308
+17:51.924 --> 17:54.123
 plus a clean generator interface.
 
-17:43.608 --> 17:47.699
+17:54.423 --> 17:58.514
 slime's custom loss receives differentiable logits and a reducer,
 
-17:47.719 --> 17:49.344
+17:58.534 --> 18:00.159
 which is unusually direct.
 
-17:49.644 --> 17:52.675
+18:00.459 --> 18:03.490
 verl's registries pass selected-token log-probs,
 
-17:52.695 --> 17:55.980
+18:03.510 --> 18:06.796
 so full-logit objectives need deeper worker changes.
 
-17:56.280 --> 17:59.058
+18:07.096 --> 18:09.873
 ROLL lets you override the worker's loss on logits.
 
-17:59.358 --> 18:03.802
+18:10.173 --> 18:14.618
 And OpenRLHF is a few explicit files that are easy to fork.
 
-18:04.672 --> 18:07.688
+18:15.488 --> 18:18.504
 NeMo RL has a design worth copying everywhere:
 
-18:07.708 --> 18:12.638
+18:18.524 --> 18:23.453
 its loss interface receives the global count of valid tokens and sequences,
 
-18:12.658 --> 18:18.842
+18:23.473 --> 18:29.657
 so distributed normalization is part of the contract instead of an accident of micro-batching.
 
-18:19.142 --> 18:22.781
+18:29.957 --> 18:33.596
 The right comparison is not which framework lists more algorithms.
 
-18:23.081 --> 18:27.358
+18:33.896 --> 18:38.173
 It's how many boundaries your change must cross, which fast paths survive it,
 
-18:27.378 --> 18:29.032
+18:38.193 --> 18:39.847
 and what it costs to maintain.
 
-18:30.702 --> 18:32.393
+18:41.517 --> 18:43.208
 Here is the landscape at a glance.
 
-18:32.693 --> 18:36.140
+18:43.508 --> 18:46.955
 These are judgments about architecture fit, not a speed ranking.
 
-18:36.440 --> 18:38.340
+18:47.256 --> 18:49.155
 verl is the broadest platform,
 
-18:38.360 --> 18:42.500
+18:49.175 --> 18:53.315
 with HybridFlow separating control flow from distributed compute.
 
-18:42.800 --> 18:49.870
+18:53.615 --> 19:00.685
 OpenRLHF composes Ray, DeepSpeed and vLLM in a way HF teams find natural.
 
-18:50.170 --> 18:55.539
+19:00.985 --> 19:06.354
 slime is a thin algorithm layer on Megatron and SGLang, strong for large MoE.
 
-18:55.839 --> 19:00.588
+19:06.654 --> 19:11.403
 Miles, forked from slime, invests in weight transfer, consistency and recovery.
 
-19:00.888 --> 19:05.171
+19:11.703 --> 19:15.986
 SkyRL offers modular generator and environment interfaces.
 
-19:05.471 --> 19:08.757
+19:16.286 --> 19:19.572
 AReaL co-designs asynchronous sampling with the learning rule.
 
-19:09.057 --> 19:13.288
+19:19.872 --> 19:24.103
 NeMo RL integrates NVIDIA's large-model stack and distillation.
 
-19:13.588 --> 19:16.836
+19:24.403 --> 19:27.652
 ROLL handles multi-domain, multi-reward pipelines.
 
-19:17.136 --> 19:19.892
+19:27.952 --> 19:30.707
 RLinf targets embodied and VLA training,
 
-19:19.912 --> 19:24.263
+19:30.727 --> 19:35.079
 and Prime-RL couples async training with verifier environments.
 
-19:25.133 --> 19:29.012
+19:35.949 --> 19:39.828
 Around them: fine-tuning toolchains for SFT and preference work;
 
-19:29.312 --> 19:32.005
+19:40.128 --> 19:42.821
 agent adapters that capture real agent traces;
 
-19:32.305 --> 19:33.309
+19:43.121 --> 19:44.124
 environment hubs;
 
-19:33.609 --> 19:34.271
+19:44.424 --> 19:45.086
 and Tinker,
 
-19:34.291 --> 19:39.231
+19:45.106 --> 19:50.046
 a hosted API where you write the loop and the service runs distributed training.
 
-19:39.531 --> 19:41.119
+19:50.346 --> 19:51.934
 Also check maintenance status.
 
-19:41.419 --> 19:47.035
+19:52.234 --> 19:57.850
 torchtune is no longer actively developed, ReaLHF is archived in favor of AReaL,
 
-19:47.055 --> 19:50.487
+19:57.870 --> 20:01.303
 and TorchForge's direction moved into TorchTitan.
 
-19:52.157 --> 19:53.191
+20:02.973 --> 20:06.966
+Zoom out, and the frameworks stop looking like a dozen unrelated systems.
+
+20:07.266 --> 20:10.066
+They are recipes built from a handful of shared atoms.
+
+20:10.366 --> 20:15.975
+At the bottom, everyone shares PyTorch, torch dot distributed with NCCL for tensors,
+
+20:15.995 --> 20:17.718
+and the same CUDA kernels.
+
+20:18.018 --> 20:22.417
+Above that, every recipe picks one training backbone, FSDP2,
+
+20:22.437 --> 20:24.774
+DeepSpeed ZeRO or Megatron-Core;
+
+20:25.074 --> 20:28.357
+one generation engine, vLLM or SGLang;
+
+20:28.657 --> 20:30.499
+and an orchestrator, usually Ray.
+
+20:31.369 --> 20:32.663
+Now read the recipes.
+
+20:32.963 --> 20:37.380
+OpenRLHF is Ray, plus DeepSpeed ZeRO, plus vLLM.
+
+20:37.680 --> 20:39.692
+slime is Megatron plus SGLang.
+
+20:39.992 --> 20:44.006
+SkyRL is FSDP2 or Megatron, plus vLLM.
+
+20:44.306 --> 20:48.150
+verl, ROLL and NeMo RL ship both backbones and both engines.
+
+20:48.450 --> 20:49.514
+The atoms repeat;
+
+20:49.814 --> 20:54.042
+what each framework really adds is the last column, its connective layer:
+
+20:54.062 --> 20:57.883
+the trajectory format, the control loop, and the hooks it exposes.
+
+20:58.183 --> 21:01.032
+That layer decides what you can change, and how cheaply.
+
+21:01.902 --> 21:04.393
+One warning before combining atoms yourself.
+
+21:04.693 --> 21:10.082
+A recipe is a path that is already connected end to end: model, training backend,
+
+21:10.102 --> 21:12.887
+weight export, engine, trajectory, update.
+
+21:13.187 --> 21:15.073
+Feature checkboxes do not add up.
+
+21:15.373 --> 21:18.417
+The source review found concrete holes:
+
+21:18.437 --> 21:22.267
+OpenRLHF's Ray plus vLLM online path has no LoRA;
+
+21:22.567 --> 21:26.037
+Miles' FSDP2 backend is data-parallel only;
+
+21:26.337 --> 21:29.423
+NeMo RL's async replay path excludes SGLang;
+
+21:29.723 --> 21:33.623
+and TRL's async trainer runs on FSDP2, not ZeRO.
+
+21:35.293 --> 21:36.612
+Why do recipes differ?
+
+21:36.912 --> 21:39.395
+Each one is a point on four trade-off axes.
+
+21:39.695 --> 21:41.515
+The first is the training backbone.
+
+21:41.815 --> 21:46.852
+FSDP2 keeps your PyTorch model and control flow intact, but leaves rollout,
+
+21:46.872 --> 21:48.470
+critics and sync to you.
+
+21:48.770 --> 21:51.334
+DeepSpeed ZeRO shards states and offloads,
+
+21:51.354 --> 21:54.717
+but its engine owns accumulation and the step boundary.
+
+21:55.017 --> 22:00.599
+Megatron-Core brings tensor, pipeline, expert and context parallelism for large MoE,
+
+22:00.619 --> 22:05.401
+at the price of model mapping and a schedule that reaches into training.
+
+22:05.701 --> 22:08.640
+The second axis is the generation engine:
+
+22:08.660 --> 22:14.702
+vLLM with its native weight-transfer engines, or SGLang with update sessions, pause,
+
+22:14.722 --> 22:16.073
+and memory release.
+
+22:16.943 --> 22:18.487
+The third axis is placement.
+
+22:18.787 --> 22:22.832
+Colocated and synchronous keeps the policy fresh with fewer copies;
+
+22:23.132 --> 22:27.504
+separated and asynchronous hides the long tail, but adds staleness,
+
+22:27.524 --> 22:31.110
+weight transfer and correction, and it is not monotone:
+
+22:31.130 --> 22:35.961
+NeMo RL's own table shows async faster on one model and slower on another.
+
+22:36.261 --> 22:38.464
+The fourth axis is the connective layer.
+
+22:38.764 --> 22:41.289
+A thin one, like slime or OpenRLHF,
+
+22:41.309 --> 22:45.796
+hands your hook real tensors but exposes the backend directly.
+
+22:46.096 --> 22:49.863
+A platform, like verl or ROLL, carries many backends and roles,
+
+22:49.883 --> 22:53.951
+but you learn its abstractions before your learning rule is visible.
+
+22:55.621 --> 22:57.646
+So far, frameworks as recipes.
+
+22:57.946 --> 23:00.679
+Now let's go the other way, from the math to the code.
+
+23:00.979 --> 23:02.873
+Write out the full online objective,
+
+23:02.893 --> 23:05.424
+and number every place you might want to change.
+
+23:05.724 --> 23:10.415
+Positions one to six are the data rule: which prompts, who generates, the reward,
+
+23:10.435 --> 23:14.485
+how long data lives, how stale it may be, and the behavior correction.
+
+23:14.785 --> 23:18.062
+They decide which samples enter the gradient, and with what weight.
+
+23:18.932 --> 23:22.869
+Positions seven to twelve are the learning rule: the advantage,
+
+23:22.889 --> 23:27.579
+the surrogate on sampled tokens, anything that needs the full distribution,
+
+23:27.599 --> 23:31.473
+the normalization, extra networks, and the update rule itself.
+
+23:31.773 --> 23:35.278
+Thirteen closes the loop by publishing weights back to the engine.
+
+23:35.578 --> 23:39.117
+Notice that the two halves are coupled through position six:
+
+23:39.137 --> 23:41.963
+the moment a data rule reuses or delays samples,
+
+23:41.983 --> 23:46.885
+the learning rule must correct for the behavior policy that actually produced them.
+
+23:48.555 --> 23:52.332
+Here is the address book: thirteen positions against eleven routes,
+
+23:52.352 --> 23:54.712
+each cell colored by how deep you must go.
+
+23:55.012 --> 23:56.638
+L zero is a config flag.
+
+23:56.938 --> 23:58.393
+L one is a declared hook.
+
+23:58.693 --> 24:03.226
+L two means subclassing a stage, L three means editing framework files,
+
+24:03.246 --> 24:07.395
+and L four means the change crosses worker or backend boundaries.
+
+24:07.695 --> 24:10.121
+Dashed cells were not covered by the source review.
+
+24:10.421 --> 24:11.379
+Read it by rows.
+
+24:11.679 --> 24:16.765
+Generation and staleness, rows two and five, are config or hooks almost everywhere:
+
+24:16.785 --> 24:19.348
+this is what these runtimes are built for.
+
+24:20.218 --> 24:26.466
+Rows seven and eight, advantage and surrogate, are hooks in verl, SkyRL, slime,
+
+24:26.486 --> 24:31.147
+NeMo RL and prime-rl, but file edits in OpenRLHF and Miles.
+
+24:31.447 --> 24:37.467
+Row nine splits the field: slime and NeMo RL hand your loss the logits, while verl,
+
+24:37.487 --> 24:41.398
+SkyRL and prime-rl pass only selected-token log-probs,
+
+24:41.418 --> 24:44.673
+so an exact entropy becomes an L four change.
+
+24:44.973 --> 24:48.720
+And rows eleven and twelve, new networks and new update rules,
+
+24:48.740 --> 24:50.483
+are L four nearly everywhere.
+
+24:50.783 --> 24:54.823
+That pattern is the decision rule: pick the route where your change is shallowest;
+
+24:55.123 --> 24:58.893
+if it is L four on every route, own the learner and reuse the runtime.
+
+25:00.563 --> 25:02.955
+Let's trace three concrete changes through the book.
+
+25:03.255 --> 25:08.286
+First, a data rule: prioritize hard prompts and reuse each group up to k times.
+
+25:08.586 --> 25:11.470
+That touches positions one, four, five and six.
+
+25:11.770 --> 25:16.923
+The shallowest routes are Miles' replaceable data buffer and verl's custom replay buffer.
+
+25:17.223 --> 25:18.622
+Write the rule as put and get;
+
+25:18.922 --> 25:20.143
+gate age at consumption;
+
+25:20.443 --> 25:23.251
+and remember that a reused sample is off-policy,
+
+25:23.271 --> 25:26.314
+so it must carry its behavior log-probs and version.
+
+25:26.614 --> 25:31.139
+Note that the default buffers in Miles and ROLL delete samples once consumed.
+
+25:32.009 --> 25:36.964
+Second, a learning rule that needs the full distribution: an exact entropy bonus.
+
+25:37.264 --> 25:38.828
+That is positions nine and ten.
+
+25:39.128 --> 25:41.212
+Your hook must receive logits,
+
+25:41.232 --> 25:46.824
+because a naive minus log-pi bonus on sampled tokens has zero expected gradient.
+
+25:47.124 --> 25:49.814
+slime, NeMo RL and ROLL hand you logits;
+
+25:50.114 --> 25:55.135
+under tensor parallelism they are vocabulary-sharded, so use vocab-parallel ops,
+
+25:55.155 --> 25:59.357
+and reduce with the framework's reducer instead of averaging twice.
+
+26:00.227 --> 26:04.474
+Third, new state: a Q-critic with a target network, its own optimizer,
+
+26:04.494 --> 26:06.120
+and four updates per batch.
+
+26:06.420 --> 26:11.324
+Positions eleven, twelve and thirteen, and every framework column says L four.
+
+26:11.624 --> 26:17.667
+So own the learner: create the models and optimizers yourself on FSDP2 or DeepSpeed,
+
+26:17.687 --> 26:22.575
+respect their step rules, publish only the policy to vLLM or SGLang,
+
+26:22.595 --> 26:28.348
+and checkpoint every optimizer, the target, the buffer position and the version.
+
+26:30.018 --> 26:31.052
 So what should you own?
 
-19:53.491 --> 19:56.477
+26:31.352 --> 26:34.338
 The review's answer is: own the trajectory contract.
 
-19:56.777 --> 19:58.710
+26:34.638 --> 26:36.571
 Keep exact token IDs per turn.
 
-19:59.010 --> 20:01.528
+26:36.871 --> 26:39.389
 Separate attention, loss and packing masks.
 
-20:01.828 --> 20:05.496
+26:39.689 --> 26:43.357
 Store behavior log-probs together with the sampling parameters.
 
-20:05.796 --> 20:08.687
+26:43.657 --> 26:46.548
 Keep old, reference and teacher log-probs distinct.
 
-20:08.987 --> 20:11.364
+26:46.848 --> 26:49.226
 Carry group, episode and turn IDs.
 
-20:11.664 --> 20:13.453
+26:49.526 --> 26:51.314
 Record versions per token span.
 
-20:13.753 --> 20:17.929
+26:51.614 --> 26:55.790
 And distinguish terminated from truncated, because they bootstrap differently.
 
-20:18.229 --> 20:22.777
+26:56.090 --> 27:00.638
 When you switch backends, this contract tells you exactly what information was lost.
 
-20:23.647 --> 20:28.877
+27:01.508 --> 27:06.738
 Then keep a minimal architecture of six modules: trajectory, algorithm, learner,
 
-20:28.897 --> 20:30.977
+27:06.758 --> 27:08.838
 rollout, runtime and evaluation.
 
-20:31.277 --> 20:36.086
+27:09.138 --> 27:13.947
 Write the algorithm in plain PyTorch, and reuse engines and runtimes for the rest.
 
-20:36.386 --> 20:41.593
+27:14.247 --> 27:19.454
 This loop makes the control flow explicit: collect, encode, plan updates, sample,
 
-20:41.613 --> 20:45.853
+27:19.474 --> 27:23.714
 forward, compute the objective, step, update targets, and publish.
 
-20:46.153 --> 20:48.902
+27:24.014 --> 27:26.763
 If your method is a single-actor policy gradient,
 
-20:48.922 --> 20:51.615
+27:26.783 --> 27:29.476
 hand most of these steps to an existing trainer.
 
-20:51.915 --> 20:54.454
+27:29.776 --> 27:32.315
 If it has multiple networks, own the learner loop.
 
-20:55.324 --> 20:56.744
+27:33.185 --> 27:34.605
 Finally, name your clocks.
 
-20:57.044 --> 20:58.041
+27:34.905 --> 27:35.902
 An optimizer step,
 
-20:58.061 --> 21:02.727
+27:35.922 --> 27:40.588
 a published policy version and a recoverable checkpoint are three different events.
 
-21:03.027 --> 21:07.423
+27:40.888 --> 27:45.284
 And a real checkpoint for online training also needs the rollout queue,
 
-21:07.443 --> 21:12.026
+27:45.304 --> 27:49.887
 trajectory versions, replay position, environment state and sampler state,
 
-21:12.046 --> 21:13.456
+27:49.907 --> 27:51.317
 not just model weights.
 
-21:15.126 --> 21:17.920
+27:52.987 --> 27:55.781
 Now we can turn all of this into a decision procedure.
 
-21:18.220 --> 21:21.758
+27:56.081 --> 27:59.620
 First question: does your training data come from the current policy?
 
-21:22.058 --> 21:23.218
+27:59.920 --> 28:01.079
 If not, you're offline.
 
-21:23.518 --> 21:25.245
+28:01.379 --> 28:03.106
 Start with TRL plus PEFT;
 
-21:25.545 --> 21:28.230
+28:03.406 --> 28:06.091
 add DeepSpeed or FSDP2 for scale;
 
-21:28.530 --> 21:33.344
+28:06.391 --> 28:11.205
 use LLaMA-Factory, ms-swift or Axolotl for config-driven recipes;
 
-21:33.644 --> 21:36.640
+28:11.505 --> 28:14.501
 QLoRA or Unsloth when memory is the constraint;
 
-21:36.940 --> 21:38.313
+28:14.801 --> 28:16.174
 and Tunix on TPUs.
 
-21:39.183 --> 21:43.222
+28:17.044 --> 28:21.083
 If you're online, ask: does your idea fit inside the generator,
 
-21:43.242 --> 21:45.606
+28:21.103 --> 28:23.467
 advantage and policy-loss interfaces?
 
-21:45.906 --> 21:47.912
+28:23.767 --> 28:25.773
 If yes, reuse a complete runtime.
 
-21:48.212 --> 21:53.675
+28:26.073 --> 28:31.536
 The review's default first prototype is SkyRL on FSDP2 with vLLM;
 
-21:53.975 --> 21:56.691
+28:31.836 --> 28:34.552
 verl for a shared, multi-backend team platform;
 
-21:56.991 --> 22:01.400
+28:34.852 --> 28:39.261
 OpenRLHF if you already have HF and DeepSpeed assets;
 
-22:01.700 --> 22:06.468
+28:39.561 --> 28:44.329
 slime, Miles or NeMo RL once you've committed to Megatron and large MoE.
 
-22:06.768 --> 22:12.244
+28:44.629 --> 28:50.105
 If not, because you need new networks, replay or a different update rule,
 
-22:12.264 --> 22:13.448
+28:50.125 --> 28:51.309
 own the learner,
 
-22:13.468 --> 22:19.245
+28:51.329 --> 28:57.106
 and reuse FSDP2 or DeepSpeed for execution and vLLM or SGLang for generation.
 
-22:20.115 --> 22:21.306
+28:57.976 --> 28:59.167
 Specialized cases.
 
-22:21.606 --> 22:26.803
+28:59.467 --> 29:04.664
 If you already have a working agent, keep its harness and capture traces with rLLM,
 
-22:26.823 --> 22:28.249
+29:04.684 --> 29:06.110
 Agent Lightning or ART.
 
-22:28.549 --> 22:32.442
+29:06.410 --> 29:10.303
 If asynchrony itself is your research, study AReaL and PipelineRL.
 
-22:32.742 --> 22:36.212
+29:10.603 --> 29:14.073
 For embodied or VLA training, evaluate RLinf.
 
-22:36.512 --> 22:41.381
+29:14.373 --> 29:19.242
 And if you'd rather not run GPUs at all, Tinker exposes forward-backward,
 
-22:41.401 --> 22:45.801
+29:19.262 --> 29:23.662
 optimizer step and sampling as an API, within LoRA-centric limits.
 
-22:47.471 --> 22:48.825
+29:25.332 --> 29:26.686
 How do you validate a choice?
 
-22:49.125 --> 22:50.155
+29:26.986 --> 29:28.016
 Use two stages.
 
-22:50.455 --> 22:55.726
+29:28.316 --> 29:33.587
 Stage one fixes the trajectories: feed every candidate the same tokens, masks,
 
-22:55.746 --> 22:59.796
+29:33.607 --> 29:37.657
 rewards and behavior log-probs, and compare loss, gradients,
 
-22:59.816 --> 23:02.713
+29:37.677 --> 29:40.574
 a single parameter update, memory and time.
 
-23:03.013 --> 23:06.588
+29:40.874 --> 29:44.449
 That separates execution differences from sampling differences.
 
-23:06.888 --> 23:11.291
+29:44.749 --> 29:49.152
 Stage two runs the closed loop with the same start checkpoint, data,
 
-23:11.311 --> 23:14.088
+29:49.172 --> 29:51.949
 evaluation and budget, aligning every knob,
 
-23:14.108 --> 23:18.121
+29:51.969 --> 29:55.982
 from group size and sampling parameters to loss reduction, KL,
 
-23:18.141 --> 23:19.617
+29:56.002 --> 29:57.478
 clipping and filtering.
 
-23:19.917 --> 23:23.294
+29:57.778 --> 30:01.155
 Then compare GPU-hours to target across several seeds.
 
-23:24.164 --> 23:26.476
+30:02.025 --> 30:04.337
 And when reading code, check these questions,
 
-23:26.496 --> 23:29.429
+30:04.357 --> 30:07.290
 which matter more than the number of built-in algorithms.
 
-23:29.729 --> 23:33.653
+30:07.590 --> 30:11.514
 Where exactly is the final mean taken, and does the engine scale again?
 
-23:33.953 --> 23:36.412
+30:11.814 --> 30:14.273
 Are group statistics aggregated across ranks?
 
-23:36.712 --> 23:39.217
+30:14.573 --> 30:17.078
 Are top-p log-probs normalized on the support?
 
-23:39.517 --> 23:41.858
+30:17.378 --> 30:19.719
 Does any branch silently detach a tensor?
 
-23:42.158 --> 23:46.307
+30:20.019 --> 30:24.168
 Does weight sync push everything, run quantization post-processing,
 
-23:46.327 --> 23:47.676
+30:24.188 --> 30:25.537
 and invalidate caches?
 
-23:47.976 --> 23:51.609
+30:25.837 --> 30:29.470
 Does the buffer delete samples, and does resume restore everything?
 
-23:52.479 --> 23:55.264
+30:30.340 --> 30:33.125
 Keep a tiny pure-PyTorch reference loss and step.
 
-23:55.564 --> 23:59.460
+30:33.425 --> 30:37.321
 After every kernel, precision or backend change, compare against it.
 
-23:59.760 --> 24:03.654
+30:37.621 --> 30:41.515
 Then improve efficiency one bottleneck at a time, in profile order.
 
-24:03.954 --> 24:07.696
+30:41.815 --> 30:45.557
 It's slower on day one, and much faster over the life of a project.
 
-24:09.366 --> 24:11.163
+30:47.227 --> 30:49.024
 Let's wrap up with five takeaways.
 
-24:11.463 --> 24:15.307
+30:49.324 --> 30:53.168
 One: every post-training method is one gradient with two choices,
 
-24:15.327 --> 24:17.507
+30:53.188 --> 30:55.368
 the data source and the token weight;
 
-24:17.807 --> 24:22.284
+30:55.668 --> 31:00.145
 fixed data makes it a trainer problem, on-policy data makes it a systems problem.
 
-24:22.584 --> 24:25.407
+31:00.445 --> 31:03.268
 Two: compose by layer, one component per role,
 
-24:25.427 --> 24:29.116
+31:03.288 --> 31:06.977
 and verify the whole path before you trust a feature matrix.
 
-24:29.416 --> 24:34.153
+31:07.277 --> 31:12.014
 Three: frameworks differ less in their algorithm lists than in scheduling,
 
-24:34.173 --> 24:37.560
+31:12.034 --> 31:15.421
 consistency, MoE depth, weight transfer and recovery.
 
-24:38.430 --> 24:42.542
-Four: own the math and the trajectory contract, and reuse the runtime.
+31:16.291 --> 31:18.861
+Four: find your change's address in the objective.
 
-24:42.842 --> 24:46.386
+31:19.161 --> 31:21.235
+If it stays in hooks, reuse a framework;
+
+31:21.535 --> 31:26.071
+if it crosses boundaries everywhere, own the learner and the trajectory contract,
+
+31:26.091 --> 31:27.309
+and reuse the runtime.
+
+31:27.609 --> 31:31.153
 Five: optimize cost to target, one bottleneck at a time,
 
-24:46.406 --> 24:49.760
+31:31.173 --> 31:34.527
 with a small reference implementation as your anchor.
 
-24:50.060 --> 24:51.016
+31:34.827 --> 31:35.783
 Thanks for watching.

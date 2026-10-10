@@ -3,29 +3,34 @@
 Bilingual narration script for `post_training_systems_en.mp4` and `post_training_systems_zh.mp4`.
 中英对照解说稿，对应英文版与中文版视频。时间戳格式 EN / 中文。
 
-Duration 时长: EN 24:53 · 中文 25:17
+Duration 时长: EN 31:37 · 中文 32:15
 
 ## Contents 目录
 
 00. Title · 标题  `00:00 / 00:00`
-01. Five parts · 五个部分  `00:41 / 00:44`
-02. One gradient behind every method · 一个梯度统一所有后训练方法  `01:11 / 01:14`
-03. Six layers, one component per role · 六层工具栈：每个角色选一个部件  `02:31 / 02:31`
-04. Parameterization: LoRA & QLoRA arithmetic · 参数化层：LoRA 与 QLoRA 的算术  `04:10 / 04:01`
-05. Execution: the sharding math · 训练执行层：分片的数学  `05:46 / 05:38`
-06. Generation engines & the weight-sync boundary · 推理生成层与权重同步边界  `07:55 / 07:40`
-07. Offline post-training: SFT & DPO · 离线后训练：SFT 与 DPO  `09:24 / 09:11`
-08. Online RL: the loop and its objectives · 在线 RL：闭环与目标函数  `11:05 / 11:00`
-09. Step time: find the bottleneck first · 单步时间：先找到瓶颈  `12:26 / 12:20`
-10. Asynchrony is not a boolean · 异步不是一个布尔开关  `13:53 / 13:52`
-11. Train–inference consistency: five error sources · 训练—推理一致性：五个误差来源  `15:19 / 15:23`
-12. What "customize every detail" really means · “定制每个算法细节”到底意味着什么  `16:23 / 16:26`
-13. Where each framework lets you in · 各框架的算法入口  `17:23 / 17:31`
-14. The framework landscape at a glance · 主流框架定位速览  `18:29 / 18:40`
-15. Own the trajectory contract; reuse the runtime · 自己掌握轨迹契约，复用运行时  `19:51 / 19:57`
-16. A decision procedure · 选型决策流程  `21:14 / 21:25`
-17. Validate: two stages and a code checklist · 验证：两阶段评测与源码检查清单  `22:46 / 23:05`
-18. Five takeaways · 五条结论  `24:08 / 24:32`
+01. Six parts · 六个部分  `00:41 / 00:44`
+02. One gradient behind every method · 一个梯度统一所有后训练方法  `01:22 / 01:25`
+03. Six layers, one component per role · 六层工具栈：每个角色选一个部件  `02:41 / 02:42`
+04. Parameterization: LoRA & QLoRA arithmetic · 参数化层：LoRA 与 QLoRA 的算术  `04:21 / 04:12`
+05. Execution: the sharding math · 训练执行层：分片的数学  `05:57 / 05:49`
+06. Generation engines & the weight-sync boundary · 推理生成层与权重同步边界  `08:06 / 07:51`
+07. Offline post-training: SFT & DPO · 离线后训练：SFT 与 DPO  `09:35 / 09:23`
+08. Online RL: the loop and its objectives · 在线 RL：闭环与目标函数  `11:16 / 11:11`
+09. Step time: find the bottleneck first · 单步时间：先找到瓶颈  `12:37 / 12:32`
+10. Asynchrony is not a boolean · 异步不是一个布尔开关  `14:04 / 14:03`
+11. Train–inference consistency: five error sources · 训练—推理一致性：五个误差来源  `15:30 / 15:35`
+12. What "customize every detail" really means · “定制每个算法细节”到底意味着什么  `16:33 / 16:38`
+13. Where each framework lets you in · 各框架的算法入口  `17:33 / 17:42`
+14. The framework landscape at a glance · 主流框架定位速览  `18:40 / 18:52`
+15. Same atoms, different recipes · 同一批原子，不同的配方  `20:02 / 20:08`
+16. Four trade-off axes · 四条取舍轴  `21:34 / 21:43`
+17. Every term of the objective has an address · 目标函数里每一项都有地址  `22:54 / 23:05`
+18. The address book: position × framework · 地址簿：位置 × 框架  `23:47 / 24:00`
+19. Three changes, traced · 三个改动，逐项追踪  `24:59 / 25:19`
+20. Own the trajectory contract; reuse the runtime · 自己掌握轨迹契约，复用运行时  `26:29 / 26:48`
+21. A decision procedure · 选型决策流程  `27:52 / 28:17`
+22. Validate: two stages and a code checklist · 验证：两阶段评测与源码检查清单  `29:24 / 29:56`
+23. Five takeaways · 五条结论  `30:46 / 31:24`
 
 ## 00 · Post-Training Systems, Layer by Layer · 后训练工具体系：分层拆解
 
@@ -36,19 +41,19 @@ Duration 时长: EN 24:53 · 中文 25:17
 | Welcome. In this video we'll build a systematic mental model of the post-training tool ecosystem, the way a senior post-training engineer sees it. Not a list of frameworks, but a layered map: what each layer computes, what math it must preserve, and how the pieces compose into a working system. | 欢迎。这期视频从一位资深后训练工程师的视角，为后训练工具生态建立一套系统化的理解。我们不罗列框架，而是画一张分层地图：每一层在计算什么，必须守住哪些数学语义，以及这些部件怎样组合成一个能真正运行的系统。 |
 | Everything we discuss comes back to three forces that pull against each other: how freely you can change the algorithm, how much engineering complexity you take on, and how efficiently the whole loop executes. The material comes from the two research reports in this folder, one of which reviews the source code of the major frameworks at their October 2026 releases. | 贯穿全片的是三股彼此拉扯的力量：算法能改得多自由，要承担多少工程复杂度，以及整个循环跑得多高效。素材来自这个目录下的两份调研报告，其中一份对主流框架做了源码级审查，版本固定在 2026 年 10 月的发布。 |
 
-## 01 · Five parts · 五个部分
+## 01 · Six parts · 六个部分
 *ROADMAP · 路线图*
 
 ⏱ EN 00:41 · 中文 00:44
 
 | English | 中文 |
 |---|---|
-| Here's the roadmap. Part one derives a single equation that covers nearly every post-training method. Part two walks the stack layer by layer, with the memory math. Part three contrasts offline and online training. Part four covers where systems really differ: step time, asynchrony, consistency, and what algorithmic freedom actually means. Part five turns it all into a data contract, an architecture, a decision procedure, and a validation protocol. | 先看路线图。第一部分推导一个几乎涵盖所有后训练方法的统一公式。第二部分逐层走过工具栈，并算清显存账。第三部分对比离线训练与在线训练。第四部分讨论系统真正拉开差距的地方：单步时间、异步、训练推理一致性，以及“算法自由度”究竟指什么。第五部分把这些落成数据契约、最小架构、选型流程和验证方法。 |
+| Here's the roadmap. Part one derives a single equation that covers nearly every post-training method. Part two walks the stack layer by layer, with the memory math. Part three contrasts offline and online training. Part four covers where systems really differ: step time, asynchrony, consistency, and what algorithmic freedom actually means. Part five takes the frameworks apart: the shared atoms they are built from, the trade-offs between recipes, and the exact address of every term of the objective in each codebase. Part six turns it all into a data contract, an architecture, a decision procedure, and a validation protocol. | 先看路线图。第一部分推导一个几乎涵盖所有后训练方法的统一公式。第二部分逐层走过工具栈，并算清显存账。第三部分对比离线训练与在线训练。第四部分讨论系统真正拉开差距的地方：单步时间、异步、训练推理一致性，以及“算法自由度”究竟指什么。第五部分把框架拆开：它们由哪些共享原子组成，配方之间如何取舍，以及目标函数的每一项在各个代码库里的确切地址。第六部分把这些落成数据契约、最小架构、选型流程和验证方法。 |
 
 ## 02 · One gradient behind every method · 一个梯度统一所有后训练方法
 *PART 1 · ONE EQUATION · 第一部分 · 一个公式*
 
-⏱ EN 01:11 · 中文 01:14
+⏱ EN 01:22 · 中文 01:25
 
 | English | 中文 |
 |---|---|
@@ -59,7 +64,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 03 · Six layers, one component per role · 六层工具栈：每个角色选一个部件
 *PART 2 · THE STACK, LAYER BY LAYER · 第二部分 · 逐层拆解工具栈*
 
-⏱ EN 02:31 · 中文 02:31
+⏱ EN 02:41 · 中文 02:42
 
 | English | 中文 |
 |---|---|
@@ -71,7 +76,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 04 · Parameterization: LoRA & QLoRA arithmetic · 参数化层：LoRA 与 QLoRA 的算术
 *PART 2 · THE STACK, LAYER BY LAYER · 第二部分 · 逐层拆解工具栈*
 
-⏱ EN 04:10 · 中文 04:01
+⏱ EN 04:21 · 中文 04:12
 
 | English | 中文 |
 |---|---|
@@ -82,7 +87,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 05 · Execution: the sharding math · 训练执行层：分片的数学
 *PART 2 · THE STACK, LAYER BY LAYER · 第二部分 · 逐层拆解工具栈*
 
-⏱ EN 05:46 · 中文 05:38
+⏱ EN 05:57 · 中文 05:49
 
 | English | 中文 |
 |---|---|
@@ -94,7 +99,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 06 · Generation engines & the weight-sync boundary · 推理生成层与权重同步边界
 *PART 2 · THE STACK, LAYER BY LAYER · 第二部分 · 逐层拆解工具栈*
 
-⏱ EN 07:55 · 中文 07:40
+⏱ EN 08:06 · 中文 07:51
 
 | English | 中文 |
 |---|---|
@@ -105,7 +110,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 07 · Offline post-training: SFT & DPO · 离线后训练：SFT 与 DPO
 *PART 3 · OFFLINE VS. ONLINE · 第三部分 · 离线与在线*
 
-⏱ EN 09:24 · 中文 09:11
+⏱ EN 09:35 · 中文 09:23
 
 | English | 中文 |
 |---|---|
@@ -117,7 +122,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 08 · Online RL: the loop and its objectives · 在线 RL：闭环与目标函数
 *PART 3 · OFFLINE VS. ONLINE · 第三部分 · 离线与在线*
 
-⏱ EN 11:05 · 中文 11:00
+⏱ EN 11:16 · 中文 11:11
 
 | English | 中文 |
 |---|---|
@@ -128,7 +133,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 09 · Step time: find the bottleneck first · 单步时间：先找到瓶颈
 *PART 4 · WHERE SYSTEMS REALLY DIFFER · 第四部分 · 系统真正的差异*
 
-⏱ EN 12:26 · 中文 12:20
+⏱ EN 12:37 · 中文 12:32
 
 | English | 中文 |
 |---|---|
@@ -139,7 +144,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 10 · Asynchrony is not a boolean · 异步不是一个布尔开关
 *PART 4 · WHERE SYSTEMS REALLY DIFFER · 第四部分 · 系统真正的差异*
 
-⏱ EN 13:53 · 中文 13:52
+⏱ EN 14:04 · 中文 14:03
 
 | English | 中文 |
 |---|---|
@@ -150,7 +155,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 11 · Train–inference consistency: five error sources · 训练—推理一致性：五个误差来源
 *PART 4 · WHERE SYSTEMS REALLY DIFFER · 第四部分 · 系统真正的差异*
 
-⏱ EN 15:19 · 中文 15:23
+⏱ EN 15:30 · 中文 15:35
 
 | English | 中文 |
 |---|---|
@@ -160,7 +165,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 12 · What "customize every detail" really means · “定制每个算法细节”到底意味着什么
 *PART 4 · WHERE SYSTEMS REALLY DIFFER · 第四部分 · 系统真正的差异*
 
-⏱ EN 16:23 · 中文 16:26
+⏱ EN 16:33 · 中文 16:38
 
 | English | 中文 |
 |---|---|
@@ -170,7 +175,7 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 13 · Where each framework lets you in · 各框架的算法入口
 *PART 4 · WHERE SYSTEMS REALLY DIFFER · 第四部分 · 系统真正的差异*
 
-⏱ EN 17:23 · 中文 17:31
+⏱ EN 17:33 · 中文 17:42
 
 | English | 中文 |
 |---|---|
@@ -180,17 +185,69 @@ Duration 时长: EN 24:53 · 中文 25:17
 ## 14 · The framework landscape at a glance · 主流框架定位速览
 *PART 4 · WHERE SYSTEMS REALLY DIFFER · 第四部分 · 系统真正的差异*
 
-⏱ EN 18:29 · 中文 18:40
+⏱ EN 18:40 · 中文 18:52
 
 | English | 中文 |
 |---|---|
 | Here is the landscape at a glance. These are judgments about architecture fit, not a speed ranking. verl is the broadest platform, with HybridFlow separating control flow from distributed compute. OpenRLHF composes Ray, DeepSpeed and vLLM in a way HF teams find natural. slime is a thin algorithm layer on Megatron and SGLang, strong for large MoE. Miles, forked from slime, invests in weight transfer, consistency and recovery. SkyRL offers modular generator and environment interfaces. AReaL co-designs asynchronous sampling with the learning rule. NeMo RL integrates NVIDIA's large-model stack and distillation. ROLL handles multi-domain, multi-reward pipelines. RLinf targets embodied and VLA training, and Prime-RL couples async training with verifier environments. | 这是主流框架的速览。这里是架构适配上的判断，不是速度排名。verl 是覆盖面最广的平台，HybridFlow 把控制流与分布式计算分开。OpenRLHF 以 HF 团队熟悉的方式组合了 Ray、DeepSpeed 和 vLLM。slime 是架在 Megatron 和 SGLang 上的薄算法层，擅长大 MoE。从 slime 分叉出来的 Miles，重点投入权重传输、一致性和故障恢复。SkyRL 提供模块化的 generator 与环境接口。AReaL 把异步采样和学习规则一起设计。NeMo RL 整合了 NVIDIA 的大模型技术栈和蒸馏。ROLL 擅长多领域、多奖励的流水线。RLinf 面向具身与 VLA 训练，Prime-RL 则把异步训练和验证器环境结合在一起。 |
 | Around them: fine-tuning toolchains for SFT and preference work; agent adapters that capture real agent traces; environment hubs; and Tinker, a hosted API where you write the loop and the service runs distributed training. Also check maintenance status. torchtune is no longer actively developed, ReaLHF is archived in favor of AReaL, and TorchForge's direction moved into TorchTitan. | 围绕它们的还有：做 SFT 和偏好优化的微调工具链；捕获真实 Agent 轨迹的接入层；环境平台；以及 Tinker，一个托管 API，你来写训练循环，服务端负责分布式训练。另外要核对维护状态：torchtune 已不再积极开发，ReaLHF 已归档、转向 AReaL，TorchForge 的方向则并入了 TorchTitan。 |
 
-## 15 · Own the trajectory contract; reuse the runtime · 自己掌握轨迹契约，复用运行时
-*PART 5 · CHOOSE & COMPOSE · 第五部分 · 选型与组合*
+## 15 · Same atoms, different recipes · 同一批原子，不同的配方
+*PART 5 · ANATOMY: ATOMS, ADDRESSES, DEPTH · 第五部分 · 拆解：原子、地址与深度*
 
-⏱ EN 19:51 · 中文 19:57
+⏱ EN 20:02 · 中文 20:08
+
+| English | 中文 |
+|---|---|
+| Zoom out, and the frameworks stop looking like a dozen unrelated systems. They are recipes built from a handful of shared atoms. At the bottom, everyone shares PyTorch, torch dot distributed with NCCL for tensors, and the same CUDA kernels. Above that, every recipe picks one training backbone, FSDP2, DeepSpeed ZeRO or Megatron-Core; one generation engine, vLLM or SGLang; and an orchestrator, usually Ray. | 把视角拉远，这些框架就不再像十几个互不相关的系统，而是用少数几种共享“原子”搭出来的配方。最底层大家共用 PyTorch、负责张量通信的 torch.distributed 与 NCCL，以及同一批 CUDA kernel。往上，每个配方选一个训练底座：FSDP2、DeepSpeed ZeRO 或 Megatron-Core；选一个推理引擎：vLLM 或 SGLang；再选一个编排层，通常是 Ray。 |
+| Now read the recipes. OpenRLHF is Ray, plus DeepSpeed ZeRO, plus vLLM. slime is Megatron plus SGLang. SkyRL is FSDP2 or Megatron, plus vLLM. verl, ROLL and NeMo RL ship both backbones and both engines. The atoms repeat; what each framework really adds is the last column, its connective layer: the trajectory format, the control loop, and the hooks it exposes. That layer decides what you can change, and how cheaply. | 再来读配方。OpenRLHF 是 Ray 加 DeepSpeed ZeRO 加 vLLM。slime 是 Megatron 加 SGLang。SkyRL 是 FSDP2 或 Megatron 加 vLLM。verl、ROLL、NeMo RL 两种底座、两种引擎都带。原子在反复出现；每个框架真正新增的是最后一列，也就是它的连接层：轨迹格式、控制循环，以及它开放的钩子。正是这一层决定了你能改什么、改起来有多便宜。 |
+| One warning before combining atoms yourself. A recipe is a path that is already connected end to end: model, training backend, weight export, engine, trajectory, update. Feature checkboxes do not add up. The source review found concrete holes: OpenRLHF's Ray plus vLLM online path has no LoRA; Miles' FSDP2 backend is data-parallel only; NeMo RL's async replay path excludes SGLang; and TRL's async trainer runs on FSDP2, not ZeRO. | 自己组合原子之前，先记住一点：一个配方是一条已经端到端贯通的路径——模型、训练后端、权重导出、推理引擎、轨迹、更新。功能列表上的勾不能相加。源码审查找到了具体的缺口：OpenRLHF 的 Ray 加 vLLM 在线路径不支持 LoRA；Miles 的 FSDP2 后端只有数据并行；NeMo RL 的异步 replay 路径排除了 SGLang；TRL 的异步 trainer 只跑在 FSDP2 上，不支持 ZeRO。 |
+
+## 16 · Four trade-off axes · 四条取舍轴
+*PART 5 · ANATOMY: ATOMS, ADDRESSES, DEPTH · 第五部分 · 拆解：原子、地址与深度*
+
+⏱ EN 21:34 · 中文 21:43
+
+| English | 中文 |
+|---|---|
+| Why do recipes differ? Each one is a point on four trade-off axes. The first is the training backbone. FSDP2 keeps your PyTorch model and control flow intact, but leaves rollout, critics and sync to you. DeepSpeed ZeRO shards states and offloads, but its engine owns accumulation and the step boundary. Megatron-Core brings tensor, pipeline, expert and context parallelism for large MoE, at the price of model mapping and a schedule that reaches into training. The second axis is the generation engine: vLLM with its native weight-transfer engines, or SGLang with update sessions, pause, and memory release. | 为什么配方各不相同？每个配方都是四条取舍轴上的一个点。第一条是训练底座。FSDP2 保留你的 PyTorch 模型和控制流，但 rollout、critic 和同步都要你自己接。DeepSpeed ZeRO 做状态分片和 offload，但梯度累积和 step 边界由它的引擎掌握。Megatron-Core 带来张量、流水线、专家和上下文并行，能训练大 MoE，代价是模型映射，以及深入训练过程的调度。第二条是推理引擎：vLLM 有原生的权重传输引擎；SGLang 有权重更新 session、暂停和显存释放。 |
+| The third axis is placement. Colocated and synchronous keeps the policy fresh with fewer copies; separated and asynchronous hides the long tail, but adds staleness, weight transfer and correction, and it is not monotone: NeMo RL's own table shows async faster on one model and slower on another. The fourth axis is the connective layer. A thin one, like slime or OpenRLHF, hands your hook real tensors but exposes the backend directly. A platform, like verl or ROLL, carries many backends and roles, but you learn its abstractions before your learning rule is visible. | 第三条是资源布局。共置同步让策略保持新鲜、副本更少；分离异步能掩盖长尾，但会带来陈旧、权重传输和修正，而且并非单调提速：NeMo RL 自己的性能表里，异步在一个模型上更快，在另一个模型上反而更慢。第四条是连接层的厚度。像 slime、OpenRLHF 这样的薄连接层，让你的钩子直接拿到真实张量，但后端的复杂度也直接摆在你面前；像 verl、ROLL 这样的平台承载多后端、多角色，但要先学会它的抽象，才能看清你的学习规则。 |
+
+## 17 · Every term of the objective has an address · 目标函数里每一项都有地址
+*PART 5 · ANATOMY: ATOMS, ADDRESSES, DEPTH · 第五部分 · 拆解：原子、地址与深度*
+
+⏱ EN 22:54 · 中文 23:05
+
+| English | 中文 |
+|---|---|
+| So far, frameworks as recipes. Now let's go the other way, from the math to the code. Write out the full online objective, and number every place you might want to change. Positions one to six are the data rule: which prompts, who generates, the reward, how long data lives, how stale it may be, and the behavior correction. They decide which samples enter the gradient, and with what weight. | 前面把框架看成配方。现在反过来，从数学走向代码。把完整的在线目标函数写出来，给每一个你可能想改的位置编上号。第一到第六个位置是数据规则：用哪些 prompt、谁来生成、奖励、数据活多久、允许多旧，以及行为策略修正。它们决定哪些样本进入梯度，以及带着多大的权重进入。 |
+| Positions seven to twelve are the learning rule: the advantage, the surrogate on sampled tokens, anything that needs the full distribution, the normalization, extra networks, and the update rule itself. Thirteen closes the loop by publishing weights back to the engine. Notice that the two halves are coupled through position six: the moment a data rule reuses or delays samples, the learning rule must correct for the behavior policy that actually produced them. | 第七到第十二个位置是学习规则：优势估计、采样 token 上的目标、任何需要完整分布的项、归一化、额外网络，以及更新规则本身。第十三个位置把权重发布回推理引擎，闭合循环。注意两半是通过第六个位置耦合在一起的：数据规则一旦重用或延迟样本，学习规则就必须针对真正产生这些样本的行为策略做修正。 |
+
+## 18 · The address book: position × framework · 地址簿：位置 × 框架
+*PART 5 · ANATOMY: ATOMS, ADDRESSES, DEPTH · 第五部分 · 拆解：原子、地址与深度*
+
+⏱ EN 23:47 · 中文 24:00
+
+| English | 中文 |
+|---|---|
+| Here is the address book: thirteen positions against eleven routes, each cell colored by how deep you must go. L zero is a config flag. L one is a declared hook. L two means subclassing a stage, L three means editing framework files, and L four means the change crosses worker or backend boundaries. Dashed cells were not covered by the source review. Read it by rows. Generation and staleness, rows two and five, are config or hooks almost everywhere: this is what these runtimes are built for. | 这是一本地址簿：十三个位置对十一条路线，每个格子的颜色表示你需要挖多深。L0 是改一个配置。L1 是接入一个声明好的钩子。L2 是继承并覆写某个阶段，L3 是修改框架源文件，L4 则意味着改动要跨越 worker 或后端的边界。虚线格是源码审查没有覆盖的位置。按行来读。生成和陈旧度，也就是第二行和第五行，几乎在所有框架里都是配置或钩子：这正是这些运行时擅长的事情。 |
+| Rows seven and eight, advantage and surrogate, are hooks in verl, SkyRL, slime, NeMo RL and prime-rl, but file edits in OpenRLHF and Miles. Row nine splits the field: slime and NeMo RL hand your loss the logits, while verl, SkyRL and prime-rl pass only selected-token log-probs, so an exact entropy becomes an L four change. And rows eleven and twelve, new networks and new update rules, are L four nearly everywhere. That pattern is the decision rule: pick the route where your change is shallowest; if it is L four on every route, own the learner and reuse the runtime. | 第七、第八行，优势和目标函数，在 verl、SkyRL、slime、NeMo RL、prime-rl 里是钩子，在 OpenRLHF 和 Miles 里则要改源文件。第九行把框架分成两派：slime 和 NeMo RL 把 logits 交给你的 loss，而 verl、SkyRL、prime-rl 只传选中 token 的对数概率，于是精确熵就成了一个 L4 的改动。第十一、十二行，新增网络和新的更新规则，几乎处处都是 L4。这个规律本身就是决策规则：选你的改动最浅的那条路线；如果它在每条路线上都是 L4，就自己持有 learner，复用运行时。 |
+
+## 19 · Three changes, traced · 三个改动，逐项追踪
+*PART 5 · ANATOMY: ATOMS, ADDRESSES, DEPTH · 第五部分 · 拆解：原子、地址与深度*
+
+⏱ EN 24:59 · 中文 25:19
+
+| English | 中文 |
+|---|---|
+| Let's trace three concrete changes through the book. First, a data rule: prioritize hard prompts and reuse each group up to k times. That touches positions one, four, five and six. The shallowest routes are Miles' replaceable data buffer and verl's custom replay buffer. Write the rule as put and get; gate age at consumption; and remember that a reused sample is off-policy, so it must carry its behavior log-probs and version. Note that the default buffers in Miles and ROLL delete samples once consumed. | 我们用地址簿追踪三个具体改动。第一个是数据规则：优先采样难题，每组数据最多重用 k 次。它触及第一、四、五、六个位置。最浅的路线是 Miles 可替换的 data buffer 和 verl 的自定义 replay buffer。把规则写成 put 和 get；在消费时判断年龄；并且记住，被重用的样本是离策略的，必须带着它的行为概率和版本号。注意，Miles 和 ROLL 的默认 buffer 在消费后就会删除样本。 |
+| Second, a learning rule that needs the full distribution: an exact entropy bonus. That is positions nine and ten. Your hook must receive logits, because a naive minus log-pi bonus on sampled tokens has zero expected gradient. slime, NeMo RL and ROLL hand you logits; under tensor parallelism they are vocabulary-sharded, so use vocab-parallel ops, and reduce with the framework's reducer instead of averaging twice. | 第二个是需要完整分布的学习规则：精确熵奖励。它对应第九和第十个位置。你的钩子必须拿到 logits，因为在采样 token 上加朴素的负对数概率奖励，期望梯度为零。slime、NeMo RL 和 ROLL 会把 logits 交给你；张量并行下这些 logits 按词表切分，所以要用词表并行的算子，并用框架自带的 reducer 归约，而不是平均两次。 |
+| Third, new state: a Q-critic with a target network, its own optimizer, and four updates per batch. Positions eleven, twelve and thirteen, and every framework column says L four. So own the learner: create the models and optimizers yourself on FSDP2 or DeepSpeed, respect their step rules, publish only the policy to vLLM or SGLang, and checkpoint every optimizer, the target, the buffer position and the version. | 第三个是新增状态：带 target 网络的 Q critic、独立的优化器、每批更新四次。它对应第十一、十二、十三个位置，而每个框架这一列都是 L4。所以自己持有 learner：在 FSDP2 或 DeepSpeed 上自己创建模型和优化器，遵守它们的 step 约定，只把策略参数发布给 vLLM 或 SGLang，checkpoint 时保存每个优化器、target、buffer 位置和版本号。 |
+
+## 20 · Own the trajectory contract; reuse the runtime · 自己掌握轨迹契约，复用运行时
+*PART 6 · CHOOSE & COMPOSE · 第六部分 · 选型与组合*
+
+⏱ EN 26:29 · 中文 26:48
 
 | English | 中文 |
 |---|---|
@@ -198,10 +255,10 @@ Duration 时长: EN 24:53 · 中文 25:17
 | Then keep a minimal architecture of six modules: trajectory, algorithm, learner, rollout, runtime and evaluation. Write the algorithm in plain PyTorch, and reuse engines and runtimes for the rest. This loop makes the control flow explicit: collect, encode, plan updates, sample, forward, compute the objective, step, update targets, and publish. If your method is a single-actor policy gradient, hand most of these steps to an existing trainer. If it has multiple networks, own the learner loop. | 然后保持一个由六个模块组成的最小架构：trajectory、algorithm、learner、rollout、runtime 和 evaluation。算法用纯 PyTorch 写，其余部分复用现有的推理引擎和运行时。这个循环让控制流一目了然：采集、编码、规划更新、采样、前向、计算目标、更新参数、更新 target、发布权重。如果你的方法只是单 actor 的策略梯度，把大部分步骤交给现成的 trainer；如果涉及多个网络，就自己持有学习器主循环。 |
 | Finally, name your clocks. An optimizer step, a published policy version and a recoverable checkpoint are three different events. And a real checkpoint for online training also needs the rollout queue, trajectory versions, replay position, environment state and sampler state, not just model weights. | 最后，给你的时钟命名。一次优化器 step、一个发布的策略版本、一个可恢复的 checkpoint，是三种不同的事件。而在线训练真正的 checkpoint，除了模型权重，还需要 rollout 队列、轨迹版本、replay 消费位置、环境状态和采样器状态。 |
 
-## 16 · A decision procedure · 选型决策流程
-*PART 5 · CHOOSE & COMPOSE · 第五部分 · 选型与组合*
+## 21 · A decision procedure · 选型决策流程
+*PART 6 · CHOOSE & COMPOSE · 第六部分 · 选型与组合*
 
-⏱ EN 21:14 · 中文 21:25
+⏱ EN 27:52 · 中文 28:17
 
 | English | 中文 |
 |---|---|
@@ -209,10 +266,10 @@ Duration 时长: EN 24:53 · 中文 25:17
 | If you're online, ask: does your idea fit inside the generator, advantage and policy-loss interfaces? If yes, reuse a complete runtime. The review's default first prototype is SkyRL on FSDP2 with vLLM; verl for a shared, multi-backend team platform; OpenRLHF if you already have HF and DeepSpeed assets; slime, Miles or NeMo RL once you've committed to Megatron and large MoE. If not, because you need new networks, replay or a different update rule, own the learner, and reuse FSDP2 or DeepSpeed for execution and vLLM or SGLang for generation. | 如果是在线场景，再问：你的想法能否完全落在 generator、优势估计和 policy loss 这三个接口里？如果能，就复用一个完整运行时。报告推荐的第一个原型是 SkyRL 的 FSDP2 加 vLLM 路径；团队共享、多后端的平台选 verl；已有 HF 和 DeepSpeed 积累选 OpenRLHF；确定走 Megatron 和大 MoE 路线后，选 slime、Miles 或 NeMo RL。如果不能，比如需要新增网络、经验回放或不同的更新规则，就自己持有学习器，执行层复用 FSDP2 或 DeepSpeed，生成层复用 vLLM 或 SGLang。 |
 | Specialized cases. If you already have a working agent, keep its harness and capture traces with rLLM, Agent Lightning or ART. If asynchrony itself is your research, study AReaL and PipelineRL. For embodied or VLA training, evaluate RLinf. And if you'd rather not run GPUs at all, Tinker exposes forward-backward, optimizer step and sampling as an API, within LoRA-centric limits. | 还有几种特殊情况。如果你已经有一个运行良好的 Agent，保留它的执行框架，用 rLLM、Agent Lightning 或 ART 捕获轨迹。如果异步本身就是你的研究课题，重点研究 AReaL 和 PipelineRL。做具身或 VLA 训练，评估 RLinf。如果你根本不想运维 GPU，Tinker 把前向反向、优化器 step 和采样做成了 API，但能力边界以 LoRA 为主。 |
 
-## 17 · Validate: two stages and a code checklist · 验证：两阶段评测与源码检查清单
-*PART 5 · CHOOSE & COMPOSE · 第五部分 · 选型与组合*
+## 22 · Validate: two stages and a code checklist · 验证：两阶段评测与源码检查清单
+*PART 6 · CHOOSE & COMPOSE · 第六部分 · 选型与组合*
 
-⏱ EN 22:46 · 中文 23:05
+⏱ EN 29:24 · 中文 29:56
 
 | English | 中文 |
 |---|---|
@@ -220,12 +277,12 @@ Duration 时长: EN 24:53 · 中文 25:17
 | And when reading code, check these questions, which matter more than the number of built-in algorithms. Where exactly is the final mean taken, and does the engine scale again? Are group statistics aggregated across ranks? Are top-p log-probs normalized on the support? Does any branch silently detach a tensor? Does weight sync push everything, run quantization post-processing, and invalidate caches? Does the buffer delete samples, and does resume restore everything? | 读源码时，请检查下面这些问题，它们比内置算法的数量更重要：最终的均值到底在哪个维度上取，引擎是否又缩放了一次？同一个 prompt 组的奖励统计是否跨 rank 聚合？top-p 的对数概率是否在支持集上归一化？有没有哪个分支悄悄 detach 了张量？权重同步是否推送了全部参数、执行了量化后处理、并让缓存失效？buffer 是否在采样后删除数据，恢复时是否把一切都恢复了？ |
 | Keep a tiny pure-PyTorch reference loss and step. After every kernel, precision or backend change, compare against it. Then improve efficiency one bottleneck at a time, in profile order. It's slower on day one, and much faster over the life of a project. | 保留一个很小的纯 PyTorch 参考 loss 和 step。每次更换 kernel、精度或后端之后，都和它对比。然后按 profile 的顺序，一次只解决一个瓶颈。第一天会慢一些，但在整个项目周期里会快得多。 |
 
-## 18 · Five takeaways · 五条结论
+## 23 · Five takeaways · 五条结论
 *SUMMARY · 总结*
 
-⏱ EN 24:08 · 中文 24:32
+⏱ EN 30:46 · 中文 31:24
 
 | English | 中文 |
 |---|---|
 | Let's wrap up with five takeaways. One: every post-training method is one gradient with two choices, the data source and the token weight; fixed data makes it a trainer problem, on-policy data makes it a systems problem. Two: compose by layer, one component per role, and verify the whole path before you trust a feature matrix. Three: frameworks differ less in their algorithm lists than in scheduling, consistency, MoE depth, weight transfer and recovery. | 最后总结五点。第一，所有后训练方法都是同一个梯度加两个选择：数据来源和 token 权重；数据固定就是训练器问题，在线数据就是系统问题。第二，按层组合，每个角色一个部件，在相信功能矩阵之前先验证整条路径。第三，框架之间的差距，与其说在算法列表，不如说在调度、一致性、MoE 支持深度、权重传输和故障恢复。 |
-| Four: own the math and the trajectory contract, and reuse the runtime. Five: optimize cost to target, one bottleneck at a time, with a small reference implementation as your anchor. Thanks for watching. | 第四，自己掌握数学和轨迹契约，复用运行时。第五，优化达到目标的成本，一次解决一个瓶颈，并以一个小型参考实现为锚点。感谢观看。 |
+| Four: find your change's address in the objective. If it stays in hooks, reuse a framework; if it crosses boundaries everywhere, own the learner and the trajectory contract, and reuse the runtime. Five: optimize cost to target, one bottleneck at a time, with a small reference implementation as your anchor. Thanks for watching. | 第四，先找到你的改动在目标函数里的地址：落在钩子里就复用现成框架；处处都要跨边界，就自己掌握 learner 与轨迹契约，复用运行时。第五，优化达到目标的成本，一次解决一个瓶颈，并以一个小型参考实现为锚点。感谢观看。 |

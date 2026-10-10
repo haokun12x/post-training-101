@@ -33,7 +33,7 @@
       if (n.dataset.done === n.dataset.tex) return;
       try {
         var disp = !!n.dataset.display || !!n.closest(".formula");
-        katex.render(n.dataset.tex, n, { displayMode: disp, throwOnError: false, strict: "ignore" });
+        katex.render(n.dataset.tex, n, { displayMode: disp, throwOnError: false, strict: "ignore", trust: function (c) { return c.command === "\\htmlClass"; } });
         n.dataset.done = n.dataset.tex;
       } catch (e) { n.textContent = n.dataset.tex; }
     });
@@ -471,6 +471,223 @@
     }).join("");
   }
 
+  // ============================================================ ANATOMY
+  var AN = window.ANATOMY || null;
+  var CIRC = ["", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬"];
+  var curAtom = null, curRecipe = "slime", curPos = 9, curCell = null, picked = { 8: true, 9: true, 10: true };
+  var PRESETS = [
+    { id: "grpo", n: bi("New advantage + surrogate", "新优势 + 新目标"), pos: [7, 8] },
+    { id: "ent", n: bi("Entropy / full KL", "熵 / 全词表 KL"), pos: [8, 9, 10] },
+    { id: "replay", n: bi("Prioritized replay", "优先级回放"), pos: [1, 4, 5, 6] },
+    { id: "agent", n: bi("Agent rollout + reward", "Agent rollout + 奖励"), pos: [2, 3, 5] },
+    { id: "q", n: bi("Q-critic + target", "Q critic + target"), pos: [11, 12, 13] }
+  ];
+  function fwName(id) { for (var i = 0; i < AN.FW.length; i++) if (AN.FW[i].id === id) return T(AN.FW[i].n); return id; }
+  function posOf(n) { for (var i = 0; i < AN.POS.length; i++) if (AN.POS[i].n === n) return AN.POS[i]; return null; }
+  function lvKey(l) { return l === null || l === undefined ? null : String(l); }
+  function badge(l, extra) {
+    var k = lvKey(l);
+    if (k === null) return '<span class="lv nr"' + (extra || "") + '>·</span>';
+    var L = AN.LEVELS[k];
+    return '<span class="lv" style="--c:' + L.c + '"' + (extra || "") + ">" + L.k + "</span>";
+  }
+  function atomName(id) { for (var i = 0; i < AN.ATOMS.length; i++) if (AN.ATOMS[i].id === id) return T(AN.ATOMS[i].n); return id; }
+
+  function renderAtoms() {
+    var h = "";
+    Object.keys(AN.GROUPS).forEach(function (g) {
+      var G = AN.GROUPS[g];
+      h += '<div class="atom-g"><span class="gl" style="color:' + G.c + '">' + esc(T(G.n)) + "</span>";
+      AN.ATOMS.filter(function (a) { return a.g === g; }).forEach(function (a) {
+        h += '<button class="chip atom" style="--c:' + G.c + '" data-atom="' + a.id + '" aria-pressed="' + (curAtom === a.id) + '">' + esc(T(a.n)) + "</button>";
+      });
+      h += "</div>";
+    });
+    $("#atoms").innerHTML = h;
+    $$("#atoms .atom").forEach(function (b) { b.addEventListener("click", function () { curAtom = curAtom === b.dataset.atom ? null : b.dataset.atom; renderAtoms(); renderRecipes(); }); });
+  }
+  function renderRecipes() {
+    var cols = ["exec", "gen", "orch", "model"];
+    var h = '<table class="recipes"><thead><tr><th>' + (lang === "zh" ? "路线" : "Route") + "</th>" +
+      cols.map(function (g) { return "<th>" + esc(T(AN.GROUPS[g].n)) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    AN.RECIPES.forEach(function (r) {
+      var has = !curAtom || cols.some(function (g) { return r[g].indexOf(curAtom) >= 0; });
+      h += '<tr data-r="' + r.id + '" class="' + (has ? "" : "dim") + (r.id === curRecipe ? " on" : "") + '"><td>' + esc(fwName(r.id)) + "</td>" + cols.map(function (g) {
+        return "<td>" + (r[g].length ? r[g].map(function (a) {
+          return '<span class="atom-tag' + (curAtom === a ? " hit" : "") + '" style="--c:' + AN.GROUPS[g].c + '">' + esc(atomName(a)) + "</span>";
+        }).join("") : '<span class="faint">—</span>') + "</td>";
+      }).join("") + "</tr>";
+    });
+    $("#recipes").innerHTML = h + "</tbody></table>";
+    $$("#recipes tr[data-r]").forEach(function (tr) { tr.addEventListener("click", function () { curRecipe = tr.dataset.r; renderRecipes(); }); });
+    var R = null; AN.RECIPES.forEach(function (r) { if (r.id === curRecipe) R = r; });
+    var zh = lang === "zh";
+    $("#recipe-detail").innerHTML = '<span class="tag" style="color:var(--amber)">' + (zh ? "配方" : "Recipe") + "</span><h3>" + esc(fwName(R.id)) + "</h3>" +
+      '<dl class="kv"><dt>' + (zh ? "数据面" : "Data plane") + "</dt><dd>" + md(T(R.data)) + "</dd><dt>" + (zh ? "权重 / 布局" : "Weights / placement") + "</dt><dd>" + md(T(R.sync)) + "</dd></dl>" +
+      '<p class="edge-h">' + (zh ? "组合边界" : "Composition limits") + '</p><ul class="edge">' + R.edge.map(function (e) { return "<li>" + md(T(e)) + "</li>"; }).join("") + "</ul>";
+  }
+
+  function renderAxes() {
+    $("#axes").innerHTML = AN.AXES.map(function (A) {
+      return '<div class="axis" style="--c:' + A.c + '"><div class="ah"><span class="tag">' + esc(T(A.t)) + '</span><p class="who">' + md(T(A.who)) + '</p></div><div class="poles n' + A.poles.length + '">' + A.poles.map(function (p, i) {
+        return (i ? '<span class="vs">↔</span>' : "") + '<div class="pole"><b>' + esc(T(p.n)) + '</b><p class="gain">＋ ' + md(T(p.g)) + '</p><p class="pay">− ' + md(T(p.p)) + "</p></div>";
+      }).join("") + "</div></div>";
+    }).join("");
+    // map: x = connective layer (thin → platform); lanes = backbones shipped
+    var W = 1000, Hh = 330, x0 = 70, x1 = 960, yMg = 120, yHf = 220, zh = lang === "zh";
+    var s = '<svg viewBox="0 0 ' + W + " " + Hh + '" class="anat-svg" role="img" aria-label="map">';
+    s += '<line x1="' + x0 + '" y1="' + yMg + '" x2="' + x1 + '" y2="' + yMg + '" class="lane"/><line x1="' + x0 + '" y1="' + yHf + '" x2="' + x1 + '" y2="' + yHf + '" class="lane"/>';
+    s += '<text x="' + x0 + '" y="' + (yMg - 14) + '" class="lane-t">' + (zh ? "Megatron 底座" : "Megatron backbone") + "</text>";
+    s += '<text x="' + x0 + '" y="' + (yHf + 26) + '" class="lane-t">' + (zh ? "HF 模型 · FSDP2 / ZeRO 底座" : "HF model · FSDP2 / ZeRO backbone") + "</text>";
+    s += '<line x1="' + x0 + '" y1="300" x2="' + x1 + '" y2="300" class="axisl"/><path d="M' + (x1 - 8) + ' 295 L' + x1 + ' 300 L' + (x1 - 8) + ' 305" class="axisl" fill="none"/>';
+    s += '<text x="' + x0 + '" y="322" class="ax-t">' + (zh ? "薄连接层：数学离后端只隔几个文件" : "thin connective layer: few files between math and backend") + '</text><text x="' + x1 + '" y="322" text-anchor="end" class="ax-t">' + (zh ? "平台：多后端、多角色、多模式" : "platform: many backends, roles, modes") + "</text>";
+    AN.MAP.forEach(function (m, i) {
+      var x = x0 + 30 + m.x * (x1 - x0 - 60), top = m.b.indexOf("mg") >= 0 ? yMg : yHf, bot = m.b.indexOf("hf") >= 0 ? yHf : yMg;
+      s += '<line x1="' + x + '" y1="' + top + '" x2="' + x + '" y2="' + bot + '" class="span"/>';
+      if (m.b.indexOf("mg") >= 0) s += '<circle cx="' + x + '" cy="' + yMg + '" r="7" class="dot mg"/>';
+      if (m.b.indexOf("hf") >= 0) s += '<circle cx="' + x + '" cy="' + yHf + '" r="7" class="dot hf"/>';
+      s += '<text x="' + x + '" y="' + (top - 18 - (i % 2) * 24) + '" text-anchor="middle" class="fw-t">' + esc(fwName(m.id)) + "</text>";
+    });
+    $("#anat-map").innerHTML = s + "</svg>";
+  }
+
+  function renderFormula() {
+    var el = $("#anat-formula"), zh = lang === "zh";
+    el.innerHTML = '<div class="formula">' + AN.FORMULA.map(function (f) { return tex(f, true); }).join("") + '</div><div class="pos-chips">' +
+      AN.POS.map(function (P) {
+        return '<button class="chip pc" data-pos="' + P.n + '" style="--c:' + AN.GROUPS_POS[P.g].c + '" aria-pressed="' + (curPos === P.n) + '">' + CIRC[P.n] + " " + esc(T(P.t)) + "</button>";
+      }).join("") + "</div>";
+    renderMath(el);
+    $$(".ft", el).forEach(function (n) {
+      var m = /\bf(\d+)\b/.exec(n.className); if (!m) return;
+      n.dataset.pos = m[1];
+      var g = posOf(+m[1]).g; n.style.setProperty("--c", AN.GROUPS_POS[g].c);
+      if (+m[1] === curPos) n.classList.add("on");
+    });
+    el.onclick = function (e) {
+      var t = e.target.closest(".ft, .pc"); if (!t) return;
+      selectPos(+t.dataset.pos, true);
+    };
+    el.onmouseover = function (e) {
+      $$(".ft.hov", el).forEach(function (n) { n.classList.remove("hov"); });
+      var t = e.target.closest(".ft"); if (t) t.classList.add("hov");
+    };
+    el.onmouseleave = function () { $$(".ft.hov", el).forEach(function (n) { n.classList.remove("hov"); }); };
+  }
+  function selectPos(n, scroll) {
+    curPos = n; curCell = null;
+    $$("#anat-formula .ft").forEach(function (x) { x.classList.toggle("on", +x.dataset.pos === n); });
+    $$("#anat-formula .pc").forEach(function (x) { x.setAttribute("aria-pressed", String(+x.dataset.pos === n)); });
+    renderAddr(); renderAddrDetail();
+  }
+  function renderLadder() {
+    $("#ladder").innerHTML = ["0", "1", "2", "3", "4", "own"].map(function (k) {
+      var L = AN.LEVELS[k];
+      return '<div class="rung" style="--c:' + L.c + '"><span class="lv" style="--c:' + L.c + '">' + L.k + "</span><b>" + esc(T(L.n)) + "</b><small>" + esc(T(L.d)) + "</small></div>";
+    }).join("") + '<div class="rung" style="--c:var(--faint)"><span class="lv nr">·</span><b>' + (lang === "zh" ? "未审查" : "Not reviewed") + "</b><small>" +
+      (lang === "zh" ? "源码审查未覆盖；使用前请自行核对。" : "Not covered by the source review; check before relying on it.") + "</small></div>";
+  }
+  function renderAddr() {
+    var zh = lang === "zh", h = '<table class="addr"><thead><tr><th class="ck"></th><th>' + (zh ? "位置" : "Position") + "</th>" +
+      AN.FW.map(function (f) { return '<th class="fwc">' + esc(T(f.n)) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    var lastG = null;
+    AN.POS.forEach(function (P) {
+      if (P.g !== lastG) {
+        lastG = P.g;
+        h += '<tr class="grp"><td colspan="' + (AN.FW.length + 2) + '" style="color:' + AN.GROUPS_POS[P.g].c + '">' + esc(T(AN.GROUPS_POS[P.g].n)) + "</td></tr>";
+      }
+      h += '<tr data-p="' + P.n + '" class="' + (curPos === P.n ? "on" : "") + '" style="--c:' + AN.GROUPS_POS[P.g].c + '"><td class="ck"><input type="checkbox" aria-label="pick" data-pick="' + P.n + '"' + (picked[P.n] ? " checked" : "") + "></td>" +
+        '<td class="pn"><span class="ix">' + CIRC[P.n] + "</span>" + esc(T(P.t)) + "<small>" + esc(T(P.d)) + "</small></td>" +
+        AN.FW.map(function (f) {
+          var cell = P.cells[f.id], l = cell ? cell[0] : null, on = curCell && curCell[0] === P.n && curCell[1] === f.id;
+          return '<td class="cell' + (on ? " sel" : "") + '"><button data-cell="' + P.n + "|" + f.id + '" aria-label="' + esc(fwName(f.id)) + '">' + badge(l) + "</button></td>";
+        }).join("") + "</tr>";
+    });
+    $("#addr").innerHTML = h + "</tbody></table>";
+    $$("#addr [data-cell]").forEach(function (b) {
+      b.addEventListener("click", function () { var p = b.dataset.cell.split("|"); curPos = +p[0]; curCell = [+p[0], p[1]]; renderFormulaMarks(); renderAddr(); renderAddrDetail();
+        var d = $("#addr-detail").getBoundingClientRect(); if (d.top < 60 || d.top > window.innerHeight - 80) $("#addr-detail").scrollIntoView({ behavior: "smooth", block: "start" }); });
+    });
+    $$("#addr .pn").forEach(function (td) { td.addEventListener("click", function () { selectPos(+td.parentNode.dataset.p, false); renderFormulaMarks(); }); });
+    $$("#addr [data-pick]").forEach(function (c) { c.addEventListener("change", function () { picked[+c.dataset.pick] = c.checked; renderFit(); }); });
+  }
+  function renderFormulaMarks() {
+    $$("#anat-formula .ft").forEach(function (x) { x.classList.toggle("on", +x.dataset.pos === curPos); });
+    $$("#anat-formula .pc").forEach(function (x) { x.setAttribute("aria-pressed", String(+x.dataset.pos === curPos)); });
+  }
+  function renderAddrDetail() {
+    var P = posOf(curPos), zh = lang === "zh", el = $("#addr-detail"), G = AN.GROUPS_POS[P.g];
+    el.style.setProperty("--c", G.c);
+    var head = '<span class="tag" style="color:' + G.c + '">' + esc(T(G.n)) + '</span><h3><span class="ix">' + CIRC[P.n] + "</span> " + esc(T(P.t)) + ' <span class="tx">' + tex(P.term) + '</span></h3><p class="muted">' + esc(T(P.d)) + "</p>";
+    var list = curCell ? [curCell[1]] : AN.FW.map(function (f) { return f.id; });
+    var body = '<div class="addr-list">' + list.map(function (id) {
+      var cell = P.cells[id];
+      var txt = cell ? md(lang === "zh" ? cell[2] : cell[1]) : '<span class="faint">' + (zh ? "源码审查未覆盖这一位置。" : "Not covered by the source review.") + "</span>";
+      var L = cell ? AN.LEVELS[lvKey(cell[0])] : null;
+      return '<div class="ai"><div class="an">' + badge(cell ? cell[0] : null) + "<b>" + esc(fwName(id)) + "</b>" + (L ? "<small>" + esc(T(L.n)) + "</small>" : "") + "</div><div class=\"at\">" + txt + "</div></div>";
+    }).join("") + "</div>";
+    if (curCell) body += '<p class="fine" style="margin-top:12px"><a href="#" data-allrow="1">' + (zh ? "← 查看这一行的所有框架" : "← all routes for this position") + "</a></p>";
+    el.innerHTML = head + body;
+    renderMath(el);
+    var a = $("[data-allrow]", el); if (a) a.addEventListener("click", function (e) { e.preventDefault(); curCell = null; renderAddr(); renderAddrDetail(); });
+  }
+  function renderPresets() {
+    $("#presets").innerHTML = PRESETS.map(function (p) {
+      var on = p.pos.length === Object.keys(picked).filter(function (k) { return picked[k]; }).length && p.pos.every(function (n) { return picked[n]; });
+      return '<button class="chip" data-preset="' + p.id + '" aria-pressed="' + on + '">' + esc(T(p.n)) + ' <span class="faint">' + p.pos.map(function (n) { return CIRC[n]; }).join("") + "</span></button>";
+    }).join("") + '<button class="chip" data-preset="clear">' + (lang === "zh" ? "清空" : "Clear") + "</button>";
+    $$("#presets [data-preset]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        picked = {};
+        PRESETS.forEach(function (p) { if (p.id === b.dataset.preset) p.pos.forEach(function (n) { picked[n] = true; }); });
+        $$("#addr [data-pick]").forEach(function (c) { c.checked = !!picked[+c.dataset.pick]; });
+        renderFit();
+      });
+    });
+  }
+  function renderFit() {
+    renderPresets();
+    var zh = lang === "zh", el = $("#fit");
+    var sel = AN.POS.filter(function (P) { return picked[P.n]; });
+    if (!sel.length) {
+      el.innerHTML = '<span class="tag">' + (zh ? "排名" : "Ranking") + "</span><p class=\"muted\">" + (zh ? "还没有选择位置。勾选上表的复选框，或点一个预设。" : "Nothing picked yet. Tick rows in the table above, or choose a preset.") + "</p>";
+      return;
+    }
+    var rows = AN.FW.filter(function (f) { return f.id !== "own"; }).map(function (f) {
+      var ls = sel.map(function (P) { var c = P.cells[f.id]; return c ? c[0] : null; });
+      var known = ls.filter(function (l) { return l !== null && l !== "own" && l !== "na"; });
+      var unk = ls.length - known.length;
+      var mx = known.length ? Math.max.apply(null, known) : -1, sum = known.reduce(function (a, b) { return a + b; }, 0);
+      return { f: f, ls: ls, mx: mx, sum: sum, unk: unk };
+    });
+    rows.sort(function (a, b) { return (a.unk > 0) - (b.unk > 0) || a.mx - b.mx || a.sum - b.sum || a.unk - b.unk; });
+    var full = rows.filter(function (r) { return r.unk === 0; });
+    var best = full.length ? full[0].mx : null;
+    var msg;
+    if (best === null) msg = zh ? "没有一条路线的这些位置都被审查覆盖：先读源码再选。" : "No route has every picked position covered by the review: read the source before choosing.";
+    else if (best <= 1) msg = (zh ? "这些改动可以完全停留在配置与 hook 内：" : "These changes stay inside config and hooks on: ") + full.filter(function (r) { return r.mx === best; }).map(function (r) { return T(r.f.n); }).join(zh ? "、" : ", ") + (zh ? "。复用它的运行时。" : ". Reuse its runtime.");
+    else if (best <= 3) msg = (zh ? "最浅路线需要 " : "The shallowest route needs ") + AN.LEVELS[best].k + " (" + T(AN.LEVELS[best].n) + (zh ? ")：" : "): ") + full.filter(function (r) { return r.mx === best; }).map(function (r) { return T(r.f.n); }).join(zh ? "、" : ", ") + (zh ? "。维护一个小改动，比迁移整个生态便宜。" : ". A small, owned change beats migrating ecosystems.");
+    else msg = zh ? "所有被审查的路线都要跨越边界（L4）：自己持有 learner，复用训练执行层、推理引擎与权重传输。" : "Every reviewed route crosses boundaries (L4): own the learner, and reuse the execution backend, the engine and weight transfer.";
+    el.innerHTML = '<span class="tag" style="color:var(--amber)">' + (zh ? "排名 · 按最深层级" : "Ranking · by deepest level") + '</span><p class="fit-msg">' + esc(msg) + '</p><div class="fit">' +
+      rows.map(function (r) {
+        return '<div class="fr' + (r.unk ? " unk" : "") + '"><span class="fn">' + esc(T(r.f.n)) + '</span><span class="segs">' + r.ls.map(function (l, i) {
+          return badge(l, ' title="' + CIRC[sel[i].n] + '"');
+        }).join("") + '</span><span class="fm">' + (r.unk ? (zh ? r.unk + " 处未审查" : r.unk + " not reviewed") : (zh ? "最深 " : "max ") + AN.LEVELS[r.mx].k) + "</span></div>";
+      }).join("") +
+      '<div class="fr own"><span class="fn">' + esc(fwName("own")) + '</span><span class="segs">' + sel.map(function () { return badge("own"); }).join("") + '</span><span class="fm">' + (zh ? "成本在适配层" : "cost: adapters") + "</span></div></div>";
+  }
+  function renderTraces() {
+    var zh = lang === "zh";
+    $("#traces").innerHTML = AN.TRACES.map(function (x) {
+      return '<div class="card accent-top trace" style="--c:' + x.c + '"><span class="tag">' + esc(T(x.tag)) + " · " + x.pos.map(function (n) { return CIRC[n]; }).join("") + "</span><h3>" + esc(T(x.t)) + '</h3><p class="best"><b>' + (zh ? "最浅路线" : "Shallowest route") + "</b> " + md(T(x.best)) + '</p><ol>' +
+        x.steps.map(function (s) { return "<li>" + md(T(s)) + "</li>"; }).join("") + '</ol><p class="warn">' + md(T(x.warn)) + "</p></div>";
+    }).join("");
+  }
+  function renderAnatomy() {
+    if (!AN || !$("#anatomy")) return;
+    renderAtoms(); renderRecipes(); renderAxes(); renderFormula(); renderLadder(); renderAddr(); renderAddrDetail(); renderFit(); renderTraces();
+  }
+
   // ============================================================ VIDEO
   var CH = window.CHAPTERS || { chapters: [], total: {} };
   var filmLang = lang;
@@ -624,7 +841,7 @@
 
   // ============================================================ boot
   function renderAll() {
-    renderMethods(); renderLayers(); setupCalcs(); renderLoop(); renderTables(); renderLandscape(); renderDecision(); renderCompose();
+    renderMethods(); renderLayers(); setupCalcs(); renderLoop(); renderTables(); renderLandscape(); renderAnatomy(); renderDecision(); renderCompose();
     renderTranscript();
     renderChapters();
     renderMath(document);

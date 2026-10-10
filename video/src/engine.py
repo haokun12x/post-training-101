@@ -60,6 +60,7 @@ def L(v, lang):
 
 # ---------------------------------------------------------------- rich text
 _CJK_RE = re.compile(r"[⺀-鿿＀-￯　-〿]")
+_CIRC_RE = re.compile(r"[①-⑳]")  # circled numbers: only the CJK face has all of them
 _MARK_RE = re.compile(r"(\*\*.+?\*\*|`.+?`)")
 
 
@@ -82,7 +83,7 @@ def _units(text):
     """Break opportunities: each CJK char alone; latin words keep trailing space."""
     units, buf = [], ""
     for ch in text:
-        if _CJK_RE.match(ch):
+        if _CJK_RE.match(ch) or _CIRC_RE.match(ch):
             if buf:
                 units.append(buf)
                 buf = ""
@@ -122,6 +123,10 @@ def layout_rich(text, size, maxw, lang, color, accent, bold=False):
                 lines.append(cur)
                 cur, x = [], 0
                 continue
+            if _CIRC_RE.fullmatch(u):
+                f = font(size, bold or st == "b", False, "zh")
+            else:
+                f = fonts[st]
             w = f.getlength(u)
             fits = maxw is None or x + f.getlength(u.rstrip()) <= maxw
             if not fits and cur and u[0] not in _NO_LINE_START:

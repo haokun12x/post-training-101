@@ -214,7 +214,7 @@ def make_audio(tl, lang, narration=True):
 
     # filter automation for the pad (Hz) by section
     keys = [(0, 380), (st("chaos"), 700), (st("equation"), 1300), (st("fork"), 2000), (st("math"), 2600),
-            (st("differ"), 1100), (st("landscape"), 1700), (st("rule"), 3000), (st("outro"), 2000),
+            (st("differ"), 1100), (st("anatomy"), 1500), (st("landscape"), 1700), (st("rule"), 3000), (st("outro"), 2000),
             (total, 700)]
     kt = torch.tensor([k[0] for k in keys], device=DEV)
     kv = torch.tensor([math.log(k[1]) for k in keys], device=DEV)
@@ -280,7 +280,7 @@ def make_audio(tl, lang, narration=True):
     # ---- drums
     K, C, Hc, Ho = kick(), clap(), hat(), hat(True)
     groove = [(st("equation"), st("fork"), "half"), (st("fork"), st("math"), "four"), (st("math"), st("differ"), "full"),
-              (st("landscape") + 0, st("rule") - 2 * beat, "four")]
+              (st("anatomy"), st("landscape"), "half"), (st("landscape") + 0, st("rule") - 2 * beat, "four")]
     kicks = []
     for g0, g1, mode in groove:
         b = int(math.ceil(g0 / beat - 1e-6))
@@ -334,6 +334,8 @@ def make_audio(tl, lang, narration=True):
         sfx.add(tick(1300 + 120 * i), st("stack") + 0.25 + i * beat, 0.12, pan=0.2)
     for c in cues["differ"][1:]:
         sfx.add(tick(1600), c["t"] - 0.15, 0.14)
+    for i, c in enumerate(cues["anatomy"]):
+        sfx.add(tick(1500 + 200 * i), c["t"] - 0.1, 0.14, pan=0.25 - 0.25 * i)
     # opening swell: low drone fading in
     dn = int(st("chaos") * SR)
     tt = torch.arange(dn, device=DEV) / SR

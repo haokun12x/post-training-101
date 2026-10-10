@@ -4,9 +4,11 @@ Sources: ../post-training-investigate.md and
 ../post_training_engineering_review_2026-10-10.pdf (source-code review pinned
 to framework releases as of 2026-10-09/10).
 """
+from PIL import Image, ImageFont
+
 from engine import (AMBER, BLUE, CORAL, GREEN, LINE, MUTED, PANEL, PANEL2, PINK, TEAL, TEXT,
                     VIOLET, Arrow, Bars, Beat, Box, Bul, Chip, Code, Custom, M, Rect, Scene, T,
-                    Tbl, font, draw_rich, L)
+                    Tbl, font, draw_rich, L, math_img)
 
 
 def tr(en, zh):
@@ -17,7 +19,8 @@ P1 = tr("PART 1 · ONE EQUATION", "第一部分 · 一个公式")
 P2 = tr("PART 2 · THE STACK, LAYER BY LAYER", "第二部分 · 逐层拆解工具栈")
 P3 = tr("PART 3 · OFFLINE VS. ONLINE", "第三部分 · 离线与在线")
 P4 = tr("PART 4 · WHERE SYSTEMS REALLY DIFFER", "第四部分 · 系统真正的差异")
-P5 = tr("PART 5 · CHOOSE & COMPOSE", "第五部分 · 选型与组合")
+P5 = tr("PART 5 · ANATOMY: ATOMS, ADDRESSES, DEPTH", "第五部分 · 拆解：原子、地址与深度")
+P6 = tr("PART 6 · CHOOSE & COMPOSE", "第六部分 · 选型与组合")
 
 SCENES = []
 
@@ -65,28 +68,33 @@ _road = [
                                               "固定数据是训练器问题；在线数据是系统问题"), TEAL),
     (tr("Where systems differ", "系统差异"), tr("Step time, asynchrony, consistency, algorithmic freedom, entry points",
                                               "单步时间、异步、一致性、算法自由度与入口"), VIOLET),
+    (tr("Anatomy", "拆解"), tr("Atoms → recipes, trade-off axes, every term's address and how deep to dig",
+                              "原子 → 配方、取舍轴、每一项的代码地址与改动深度"), PINK),
     (tr("Choose & compose", "选型与组合"), tr("Trajectory contract, minimal architecture, decision procedure, validation",
                                              "轨迹契约、最小架构、决策流程与验证"), CORAL),
 ]
 _road_els = []
 for i, (t, b, c) in enumerate(_road):
-    x = 100 + i * 348
+    x = 100 + i * 290
     _road_els += [
-        Box(x, 260, 328, 470, fill=PANEL, border=LINE, bar=None),
-        T(x + 26, 286, f"0{i + 1}", size=64, bold=True, color=c),
-        T(x + 26, 390, t, size=32, w=280, bold=True, color=TEXT),
-        T(x + 26, 470, b, size=25, w=280, color=MUTED),
+        Box(x, 260, 274, 500, fill=PANEL, border=LINE, bar=None),
+        T(x + 24, 286, f"0{i + 1}", size=60, bold=True, color=c),
+        T(x + 24, 386, t, size=30, w=230, bold=True, color=TEXT),
+        T(x + 24, 466, b, size=23, w=230, color=MUTED),
     ]
-SCENES.append(Scene("roadmap", tr("ROADMAP", "路线图"), tr("Five parts", "五个部分"), beats=[
+SCENES.append(Scene("roadmap", tr("ROADMAP", "路线图"), tr("Six parts", "六个部分"), beats=[
     Beat(tr(
         "Here's the roadmap. Part one derives a single equation that covers nearly every post-training "
         "method. Part two walks the stack layer by layer, with the memory math. Part three contrasts offline "
         "and online training. Part four covers where systems really differ: step time, asynchrony, "
-        "consistency, and what algorithmic freedom actually means. Part five turns it all into a data "
-        "contract, an architecture, a decision procedure, and a validation protocol.",
+        "consistency, and what algorithmic freedom actually means. Part five takes the frameworks apart: the shared "
+        "atoms they are built from, the trade-offs between recipes, and the exact address of every term of the "
+        "objective in each codebase. Part six turns it all into a data contract, an architecture, a decision "
+        "procedure, and a validation protocol.",
         "先看路线图。第一部分推导一个几乎涵盖所有后训练方法的统一公式。第二部分逐层走过工具栈，并算清显存账。"
         "第三部分对比离线训练与在线训练。第四部分讨论系统真正拉开差距的地方：单步时间、异步、训练推理一致性，"
-        "以及“算法自由度”究竟指什么。第五部分把这些落成数据契约、最小架构、选型流程和验证方法。"),
+        "以及“算法自由度”究竟指什么。第五部分把框架拆开：它们由哪些共享原子组成，配方之间如何取舍，"
+        "以及目标函数的每一项在各个代码库里的确切地址。第六部分把这些落成数据契约、最小架构、选型流程和验证方法。"),
         add=_road_els),
 ]))
 
@@ -962,6 +970,404 @@ SCENES.append(Scene("landscape", P4, tr("The framework landscape at a glance", "
         ]),
 ]))
 
+# =========================================================== P5. anatomy
+CYAN = (110, 230, 255)
+_FWN = ["TRL", "OpenRLHF", "verl V1", "SkyRL", "slime", "Miles", "AReaL", "NeMo RL", "ROLL", "prime-rl", tr("Own learner", "自有 learner")]
+_LVC = {"0": TEAL, "1": GREEN, "2": AMBER, "3": CORAL, "4": PINK, "*": CYAN}
+_LVK = {"0": "L0", "1": "L1", "2": "L2", "3": "L3", "4": "L4", "*": "★"}
+
+
+def _pill(d, x, y, text, c, size=21, fill=None, tc=None, lang="en", h=None):
+    f = font(size, True, False, lang)
+    w = int(f.getlength(text)) + 26
+    h = h or int(size * 1.6)
+    d.rounded_rectangle([x, y, x + w, y + h], h // 2, fill=fill or PANEL2, outline=c, width=2)
+    d.text((x + 13, y + h // 2), text, font=f, fill=tc or c, anchor="lm")
+    return w
+
+
+# ---- atoms → recipes
+_ATOM_ROWS = [
+    (tr("Training execution", "训练执行"), BLUE, ["FSDP2", "DeepSpeed ZeRO", "Megatron-Core", "TorchTitan", "Archon", "DTensor / AutoModel"]),
+    (tr("Generation", "推理生成"), TEAL, ["vLLM", "SGLang"]),
+    (tr("Orchestration", "编排"), CORAL, ["Ray", "Accelerate", tr("services", "服务化"), "Kubernetes"]),
+    (tr("Shared by everyone", "所有人共享"), MUTED, ["PyTorch", "torch.distributed / NCCL", tr("CUDA kernels (FlashAttention, FlashInfer…)", "CUDA kernel（FlashAttention、FlashInfer…）")]),
+]
+
+
+def _atoms_draw(layer, d, lang):
+    y = 196
+    for name, c, atoms in _ATOM_ROWS:
+        d.text((100, y + 17), L(name, lang), font=font(22, True, False, lang), fill=c, anchor="lm")
+        x = 400
+        for a in atoms:
+            x += _pill(d, x, y, L(a, lang), c, 21, lang=lang) + 14
+        y += 46
+
+
+_RECIPES = [
+    ("TRL", ["ZeRO", "FSDP2"], ["vLLM"], ["Accelerate"], tr("Transformers `Trainer` · `_prepare_inputs` · hooks", "Transformers `Trainer` · `_prepare_inputs` · hooks")),
+    ("OpenRLHF", ["ZeRO"], ["vLLM"], ["Ray"], tr("`Experience` dataclass · a few explicit files", "`Experience` dataclass · 几个明确的文件")),
+    ("verl V1", ["FSDP2", "Megatron"], ["vLLM", "SGLang"], ["Ray"], tr("HybridFlow · TransferQueue + TensorDict · registries", "HybridFlow · TransferQueue + TensorDict · 注册表")),
+    ("SkyRL", ["FSDP2", "Megatron"], ["vLLM"], ["Ray"], tr("`GeneratorOutput` · loss & advantage registries", "`GeneratorOutput` · loss 与 advantage 注册表")),
+    ("slime", ["Megatron"], ["SGLang"], ["Ray"], tr("`Sample` · `custom_loss` gets logits + reducer", "`Sample` · `custom_loss` 拿到 logits + reducer")),
+    ("Miles", ["Megatron", "FSDP2", "TorchTitan"], ["SGLang"], ["Ray", "K8s"], tr("async DataBuffer · `WeightUpdater` · TITO / R3", "异步 DataBuffer · `WeightUpdater` · TITO / R3")),
+    ("AReaL", ["FSDP2", "Megatron", "Archon"], ["SGLang", "vLLM"], [tr("services", "服务化")], tr("training / inference / agent / weight-update services", "training / inference / agent / weight-update 服务")),
+    ("NeMo RL", ["DTensor", "Megatron"], ["vLLM", "SGLang"], ["Ray"], tr("`LossFunction` contract · controller paths", "`LossFunction` 契约 · 多种 controller 路径")),
+    ("ROLL", ["FSDP2", "Megatron"], ["vLLM", "SGLang"], ["Ray"], tr("Pipeline → Cluster → Worker → Strategy", "Pipeline → Cluster → Worker → Strategy")),
+    ("prime-rl", ["FSDP2"], ["vLLM"], [tr("services", "服务化")], tr("orchestrator + trainer · verifiers envs", "orchestrator + trainer · verifiers 环境")),
+]
+
+
+def _recipes_draw(layer, d, lang):
+    y0 = 392
+    cols = [(100, tr("Route", "路线")), (300, tr("Training execution", "训练执行")), (760, tr("Generation", "推理生成")),
+            (1010, tr("Orchestration", "编排")), (1210, tr("Connective layer: what the framework adds", "连接层：框架自己加的部分"))]
+    for x, t in cols:
+        d.text((x, y0), L(t, lang), font=font(19, True, False, lang), fill=MUTED)
+    d.line([100, y0 + 34, 1820, y0 + 34], fill=LINE, width=2)
+    y = y0 + 46
+    for name, ex, gen, orch, glue in _RECIPES:
+        d.text((100, y + 16), name, font=font(23, True, False, lang), fill=TEXT, anchor="lm")
+        for xs, items, c in ((300, ex, BLUE), (760, gen, TEAL), (1010, orch, CORAL)):
+            x = xs
+            for a in items:
+                x += _pill(d, x, y + 1, L(a, lang), c, 17, lang=lang, h=30) + 8
+        draw_rich(d, 1210, y + 2, L(glue, lang), 19, 610, lang, AMBER, AMBER, lh=1.2)
+        y += 45
+
+
+_BOUND = [
+    tr("OpenRLHF: Ray + vLLM online RL → **no LoRA**", "OpenRLHF：Ray + vLLM 在线 RL → **不支持 LoRA**"),
+    tr("Miles' FSDP2 backend → **DP only, no LoRA**", "Miles 的 FSDP2 后端 → **仅 DP、无 LoRA**"),
+    tr("NeMo RL async GRPO replay → **excludes SGLang**", "NeMo RL 异步 GRPO replay → **排除 SGLang**"),
+    tr("TRL `AsyncGRPOTrainer` → **FSDP2 only, not ZeRO**", "TRL `AsyncGRPOTrainer` → **仅 FSDP2，不支持 ZeRO**"),
+]
+
+SCENES.append(Scene("atoms", P5, tr("Same atoms, different recipes", "同一批原子，不同的配方"), beats=[
+    Beat(tr(
+        "Zoom out, and the frameworks stop looking like a dozen unrelated systems. They are recipes built from a handful "
+        "of shared atoms. At the bottom, everyone shares PyTorch, torch dot distributed with NCCL for tensors, and the same "
+        "CUDA kernels. Above that, every recipe picks one training backbone, FSDP2, DeepSpeed ZeRO or Megatron-Core; one "
+        "generation engine, vLLM or SGLang; and an orchestrator, usually Ray.",
+        "把视角拉远，这些框架就不再像十几个互不相关的系统，而是用少数几种共享“原子”搭出来的配方。最底层大家共用 PyTorch、"
+        "负责张量通信的 torch.distributed 与 NCCL，以及同一批 CUDA kernel。往上，每个配方选一个训练底座：FSDP2、DeepSpeed ZeRO "
+        "或 Megatron-Core；选一个推理引擎：vLLM 或 SGLang；再选一个编排层，通常是 Ray。"),
+        add=[Custom(_atoms_draw)]),
+    Beat(tr(
+        "Now read the recipes. OpenRLHF is Ray, plus DeepSpeed ZeRO, plus vLLM. slime is Megatron plus SGLang. SkyRL is FSDP2 "
+        "or Megatron, plus vLLM. verl, ROLL and NeMo RL ship both backbones and both engines. The atoms repeat; what each "
+        "framework really adds is the last column, its connective layer: the trajectory format, the control loop, and the "
+        "hooks it exposes. That layer decides what you can change, and how cheaply.",
+        "再来读配方。OpenRLHF 是 Ray 加 DeepSpeed ZeRO 加 vLLM。slime 是 Megatron 加 SGLang。SkyRL 是 FSDP2 或 Megatron 加 vLLM。"
+        "verl、ROLL、NeMo RL 两种底座、两种引擎都带。原子在反复出现；每个框架真正新增的是最后一列，也就是它的连接层："
+        "轨迹格式、控制循环，以及它开放的钩子。正是这一层决定了你能改什么、改起来有多便宜。"),
+        add=[Custom(_recipes_draw)]),
+    Beat(tr(
+        "One warning before combining atoms yourself. A recipe is a path that is already connected end to end: model, "
+        "training backend, weight export, engine, trajectory, update. Feature checkboxes do not add up. The source review "
+        "found concrete holes: OpenRLHF's Ray plus vLLM online path has no LoRA; Miles' FSDP2 backend is data-parallel only; "
+        "NeMo RL's async replay path excludes SGLang; and TRL's async trainer runs on FSDP2, not ZeRO.",
+        "自己组合原子之前，先记住一点：一个配方是一条已经端到端贯通的路径——模型、训练后端、权重导出、推理引擎、轨迹、更新。"
+        "功能列表上的勾不能相加。源码审查找到了具体的缺口：OpenRLHF 的 Ray 加 vLLM 在线路径不支持 LoRA；Miles 的 FSDP2 后端只有数据并行；"
+        "NeMo RL 的异步 replay 路径排除了 SGLang；TRL 的异步 trainer 只跑在 FSDP2 上，不支持 ZeRO。"),
+        add=[Rect(100, 912, 1720, 82, fill=(48, 26, 30), border=CORAL, radius=12),
+             Custom(lambda layer, d, lang: [draw_rich(d, 124 + i * 430, 926, L(b, lang), 19, 400, lang, TEXT, CORAL, lh=1.25) for i, b in enumerate(_BOUND)])],
+        pause=0.7),
+]))
+
+# ---- trade-off axes
+_AXES = [
+    (tr("Training backbone", "训练底座"), BLUE, [
+        ("FSDP2", tr("+ your PyTorch model & control flow", "+ 保留 PyTorch 模型与控制流"), tr("− rollout, critic, sync are yours", "− rollout、critic、同步要自己接")),
+        ("DeepSpeed ZeRO", tr("+ sharded states, offload", "+ 状态分片、offload"), tr("− engine owns accumulation & step", "− 引擎掌握累积与 step")),
+        ("Megatron-Core", tr("+ TP·PP·EP·CP, big MoE", "+ TP·PP·EP·CP、大 MoE"), tr("− mapping & schedule enter training", "− 模型映射与调度深入训练"))],
+     tr("FSDP2: SkyRL, prime-rl · ZeRO: OpenRLHF · Megatron: slime, Miles · both: verl, ROLL, AReaL, NeMo RL", "FSDP2：SkyRL、prime-rl · ZeRO：OpenRLHF · Megatron：slime、Miles · 两者：verl、ROLL、AReaL、NeMo RL")),
+    (tr("Generation engine", "推理引擎"), TEAL, [
+        ("vLLM", tr("+ native weight-transfer engines", "+ 原生权重传输引擎"), tr("− `keep` / `clear_cache`: old KV semantics", "− `keep` / `clear_cache`：旧 KV 的语义")),
+        ("SGLang", tr("+ update sessions, pause / release memory", "+ 更新 session、暂停 / 释放显存"), tr("− quantization post-processing at session end", "− 会话结束时做量化后处理"))],
+     tr("vLLM: TRL, OpenRLHF, SkyRL, prime-rl · SGLang: slime, Miles · both: verl, NeMo RL, ROLL, AReaL", "vLLM：TRL、OpenRLHF、SkyRL、prime-rl · SGLang：slime、Miles · 两者：verl、NeMo RL、ROLL、AReaL")),
+    (tr("Placement", "资源布局"), CORAL, [
+        (tr("Colocated · sync", "共置 · 同步"), tr("+ fresh policy, fewer copies", "+ 策略新鲜、副本少"), tr("− long tail idles the trainer", "− 长尾让训练空等")),
+        (tr("Separated · async", "分离 · 异步"), tr("+ overlap hides the long tail", "+ 重叠掩盖长尾"), tr("− staleness, transfer, correction; not monotone", "− 陈旧、传输、修正；并非单调提速"))],
+     tr("DeepSeek-V3, 512 H100: 111 → 64.1 s/step · Qwen3-30B-A3B, 16 GB200: 221 → 301 s/step (NeMo RL)", "DeepSeek-V3、512 H100：111 → 64.1 秒/步 · Qwen3-30B-A3B、16 GB200：221 → 301 秒/步（NeMo RL）")),
+    (tr("Connective layer", "连接层厚度"), AMBER, [
+        (tr("Thin", "薄"), tr("+ hooks receive real tensors", "+ hook 拿到真实张量"), tr("− backend complexity hits you directly", "− 直接面对后端复杂度")),
+        (tr("Platform", "平台"), tr("+ many backends, roles, run modes", "+ 多后端、多角色、多模式"), tr("− abstractions before your rule is visible", "− 先学抽象，才能看清你的规则"))],
+     tr("Thin: slime, OpenRLHF, SkyRL · Platform: verl V1, ROLL, NeMo RL, AReaL", "薄：slime、OpenRLHF、SkyRL · 平台：verl V1、ROLL、NeMo RL、AReaL")),
+]
+
+
+def _axis_row(i):
+    name, c, poles, who = _AXES[i]
+
+    def draw(layer, d, lang):
+        y = 196 + i * 202
+        d.rounded_rectangle([100, y, 1820, y + 184], 14, fill=PANEL, outline=LINE, width=2)
+        d.rounded_rectangle([100, y, 108, y + 184], 4, fill=c)
+        d.text((130, y + 22), L(name, lang), font=font(26, True, False, lang), fill=c)
+        draw_rich(d, 130, y + 70, L(who, lang), 18, 300, lang, MUTED, c, lh=1.3)
+        n = len(poles)
+        x0, x1 = 470, 1800
+        gap = 46
+        pw = (x1 - x0 - gap * (n - 1)) / n
+        for k, (pn, g, p) in enumerate(poles):
+            px = x0 + k * (pw + gap)
+            d.rounded_rectangle([px, y + 18, px + pw, y + 166], 10, fill=PANEL2, outline=c, width=1)
+            d.text((px + 18, y + 34), L(pn, lang), font=font(24, True, False, lang), fill=TEXT)
+            draw_rich(d, px + 18, y + 74, L(g, lang), 20, pw - 36, lang, TEXT, c, lh=1.25)
+            draw_rich(d, px + 18, y + 116, L(p, lang), 20, pw - 36, lang, MUTED, c, lh=1.25)
+            if k:
+                d.text((px - gap / 2, y + 92), "↔", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28), fill=MUTED, anchor="mm")
+    return draw
+
+
+SCENES.append(Scene("tradeoffs", P5, tr("Four trade-off axes", "四条取舍轴"), beats=[
+    Beat(tr(
+        "Why do recipes differ? Each one is a point on four trade-off axes. The first is the training backbone. FSDP2 keeps "
+        "your PyTorch model and control flow intact, but leaves rollout, critics and sync to you. DeepSpeed ZeRO shards "
+        "states and offloads, but its engine owns accumulation and the step boundary. Megatron-Core brings tensor, pipeline, "
+        "expert and context parallelism for large MoE, at the price of model mapping and a schedule that reaches into "
+        "training. The second axis is the generation engine: vLLM with its native weight-transfer engines, or SGLang with "
+        "update sessions, pause, and memory release.",
+        "为什么配方各不相同？每个配方都是四条取舍轴上的一个点。第一条是训练底座。FSDP2 保留你的 PyTorch 模型和控制流，"
+        "但 rollout、critic 和同步都要你自己接。DeepSpeed ZeRO 做状态分片和 offload，但梯度累积和 step 边界由它的引擎掌握。"
+        "Megatron-Core 带来张量、流水线、专家和上下文并行，能训练大 MoE，代价是模型映射，以及深入训练过程的调度。"
+        "第二条是推理引擎：vLLM 有原生的权重传输引擎；SGLang 有权重更新 session、暂停和显存释放。"),
+        add=[Custom(_axis_row(0)), Custom(_axis_row(1))]),
+    Beat(tr(
+        "The third axis is placement. Colocated and synchronous keeps the policy fresh with fewer copies; separated and "
+        "asynchronous hides the long tail, but adds staleness, weight transfer and correction, and it is not monotone: "
+        "NeMo RL's own table shows async faster on one model and slower on another. The fourth axis is the connective layer. "
+        "A thin one, like slime or OpenRLHF, hands your hook real tensors but exposes the backend directly. A platform, like "
+        "verl or ROLL, carries many backends and roles, but you learn its abstractions before your learning rule is visible.",
+        "第三条是资源布局。共置同步让策略保持新鲜、副本更少；分离异步能掩盖长尾，但会带来陈旧、权重传输和修正，而且并非单调提速："
+        "NeMo RL 自己的性能表里，异步在一个模型上更快，在另一个模型上反而更慢。第四条是连接层的厚度。像 slime、OpenRLHF 这样的薄连接层，"
+        "让你的钩子直接拿到真实张量，但后端的复杂度也直接摆在你面前；像 verl、ROLL 这样的平台承载多后端、多角色，"
+        "但要先学会它的抽象，才能看清你的学习规则。"),
+        add=[Custom(_axis_row(2)), Custom(_axis_row(3))]),
+]))
+
+# ---- formula positions
+_FTEX = [
+    r"\mathcal J(\theta)=\mathbb E_{{\color{cyan}x\sim\mathcal D},\ {\color{cyan}y\sim\mu}}\Big[{\color{orange}\tfrac1Z\textstyle\sum_t m_t}\;{\color{cyan}w_t}\;{\color{orange}\min\!\big(\rho_t\hat A_t,\ \mathrm{clip}(\rho_t,1\!\pm\!\epsilon)\hat A_t\big)-\beta\,\mathrm{KL}_t}\Big]",
+    r"\rho_t=\frac{{\color{orange}\pi_\theta(y_t\mid h_t)}}{\pi_{\mathrm{old}}(y_t\mid h_t)},\qquad {\color{cyan}w_t=\frac{\pi_{\mathrm{old}}}{\mu}},\qquad {\color{orange}\hat A_t=f\big({\color{cyan}r(x,y)},\,V_\phi,\dots\big)}",
+    r"\mu=\mathrm{engine}(\theta_v)\ \text{through}\ {\color{cyan}\mathrm{buffer}},\ {\color{cyan}v\ge v_{\mathrm{now}}-k}\qquad {\color{orange}\theta\leftarrow\mathrm{Opt}(\theta,\nabla_\theta\mathcal J)}\qquad \mu\leftarrow\mathrm{publish}(\theta)",
+]
+_POSL = [
+    ("①", r"x\sim\mathcal D", tr("which prompts: mixture, curriculum", "用哪些 prompt：混合、课程")),
+    ("②", r"y\sim\mu", tr("who generates: rollout, multi-turn, env", "谁生成：rollout、多轮、环境")),
+    ("③", r"r(x,y)", tr("reward: verifier, RM, env score", "奖励：验证器、RM、环境分")),
+    ("④", r"\mathrm{buffer}", tr("data lifetime: replay, reuse, delete", "数据寿命：回放、重用、删除")),
+    ("⑤", r"v\ge v_{\mathrm{now}}-k", tr("staleness: admission, age gate", "陈旧度：准入、年龄门限")),
+    ("⑥", r"w_t=\pi_{\mathrm{old}}/\mu", tr("behavior correction", "行为策略修正")),
+    ("⑦", r"\hat A_t", tr("advantage, baseline, credit", "优势、baseline、credit")),
+    ("⑧", r"\min(\rho\hat A,\mathrm{clip})", tr("surrogate on sampled tokens", "采样 token 上的目标")),
+    ("⑨", r"\pi_\theta(\cdot\mid h_t)", tr("full logits / hidden state", "全 logits / hidden state")),
+    ("⑩", r"\tfrac1Z\sum_t m_t", tr("normalization, masks", "归一化、mask")),
+    ("⑪", r"V_\phi,Q,\bar\theta,\pi_T", tr("extra networks", "额外网络")),
+    ("⑫", r"\theta\leftarrow\mathrm{Opt}", tr("update rule: UTD, optimizers", "更新规则：UTD、优化器")),
+    ("⑬", r"\mu\leftarrow\mathrm{publish}(\theta)", tr("publish weights", "发布权重")),
+]
+
+
+def _poslist(idx, x, title, c):
+    def draw(layer, d, lang):
+        y = 476
+        d.text((x, y), L(title, lang), font=font(22, True, False, lang), fill=c)
+        y += 44
+        for i in idx:
+            num, tex, lab = _POSL[i]
+            cc = TEAL if i == 12 else c
+            d.text((x, y + 20), num, font=font(30, False, False, "zh"), fill=cc, anchor="lm")
+            im = math_img(tex, 30, cc)
+            if im.width > 250:
+                s = 250 / im.width
+                im = im.resize((int(im.width * s), int(im.height * s)), Image.LANCZOS)
+            layer.alpha_composite(im, (x + 44, int(y + 20 - im.height / 2)))
+            draw_rich(d, x + 310, y + 6, L(lab, lang), 22, 520, lang, TEXT, c, lh=1.2)
+            y += 58
+    return draw
+
+
+SCENES.append(Scene("positions", P5, tr("Every term of the objective has an address", "目标函数里每一项都有地址"), beats=[
+    Beat(tr(
+        "So far, frameworks as recipes. Now let's go the other way, from the math to the code. Write out the full online "
+        "objective, and number every place you might want to change. Positions one to six are the data rule: which prompts, "
+        "who generates, the reward, how long data lives, how stale it may be, and the behavior correction. They decide which "
+        "samples enter the gradient, and with what weight.",
+        "前面把框架看成配方。现在反过来，从数学走向代码。把完整的在线目标函数写出来，给每一个你可能想改的位置编上号。"
+        "第一到第六个位置是数据规则：用哪些 prompt、谁来生成、奖励、数据活多久、允许多旧，以及行为策略修正。"
+        "它们决定哪些样本进入梯度，以及带着多大的权重进入。"),
+        add=[M(100, 196, _FTEX[0], size=40), M(100, 290, _FTEX[1], size=36), M(100, 390, _FTEX[2], size=34),
+             Custom(_poslist(range(6), 100, tr("Data rule: which samples, with what weight", "数据规则：哪些样本、带多大权重"), CYAN))]),
+    Beat(tr(
+        "Positions seven to twelve are the learning rule: the advantage, the surrogate on sampled tokens, anything that needs "
+        "the full distribution, the normalization, extra networks, and the update rule itself. Thirteen closes the loop by "
+        "publishing weights back to the engine. Notice that the two halves are coupled through position six: the moment a "
+        "data rule reuses or delays samples, the learning rule must correct for the behavior policy that actually produced them.",
+        "第七到第十二个位置是学习规则：优势估计、采样 token 上的目标、任何需要完整分布的项、归一化、额外网络，以及更新规则本身。"
+        "第十三个位置把权重发布回推理引擎，闭合循环。注意两半是通过第六个位置耦合在一起的：数据规则一旦重用或延迟样本，"
+        "学习规则就必须针对真正产生这些样本的行为策略做修正。"),
+        add=[Custom(_poslist(range(6, 13), 980, tr("Learning rule: what the update does", "学习规则：更新做什么"), AMBER))]),
+]))
+
+# ---- address book
+_MAT = {1: "2.1..1..01*", 2: "1111111111*", 3: "1..1..1101*", 4: "2.14.1.03.*", 5: "0000100000*", 6: ".0.01000..*",
+        7: "2311132.31*", 8: "2311132121*", 9: "13441..124*", 10: "231.1..12.*", 11: "4444444034*", 12: "4343442.3.*",
+        13: "3300.00.0.*"}
+_LADDER = [("0", tr("Config", "配置")), ("1", tr("Hook", "钩子")), ("2", tr("Override", "覆写")), ("3", tr("Fork", "改源码")),
+           ("4", tr("Cross boundaries", "跨边界")), ("*", tr("Yours", "自持")), (".", tr("Not reviewed", "未审查"))]
+_MX, _MY, _RH, _CW, _LW = 100, 300, 44, 122, 380
+
+
+def _row_y(n):
+    return _MY + 34 + (n - 1) * _RH + (0 if n <= 6 else 30 if n <= 12 else 60)
+
+
+def _matrix_draw(layer, d, lang):
+    x = 100
+    for k, name in _LADDER:
+        c = _LVC.get(k, MUTED)
+        if k == ".":
+            d.rounded_rectangle([x, 196, x + 52, 228], 8, outline=(90, 100, 130), width=2)
+        else:
+            d.rounded_rectangle([x, 196, x + 52, 228], 8, fill=c)
+            d.text((x + 26, 212), _LVK[k], font=font(18, True, True), fill=(10, 15, 30), anchor="mm")
+        d.text((x + 62, 212), L(name, lang), font=font(20, False, False, lang), fill=TEXT, anchor="lm")
+        x += 62 + font(20, False, False, lang).getlength(L(name, lang)) + 34
+    d.text((100, 248), L(tr("L0 flip a config · L1 plug into a declared hook · L2 subclass a stage · L3 edit framework files · L4 cross worker / backend boundaries",
+                           "L0 改配置 · L1 接入声明的钩子 · L2 继承覆写某阶段 · L3 修改框架文件 · L4 跨越 worker / 后端边界"), lang),
+           font=font(19, False, False, lang), fill=MUTED)
+    for j, n in enumerate(_FWN):
+        cx = _MX + _LW + j * _CW + _CW // 2
+        d.text((cx, _MY + 10), L(n, lang), font=font(18, True, False, lang), fill=CYAN if j == 10 else TEXT, anchor="mm")
+    for n in range(1, 14):
+        y = _row_y(n)
+        g = CYAN if n <= 6 else AMBER if n <= 12 else TEAL
+        num, _, lab = _POSL[n - 1]
+        d.text((_MX, y + 18), num, font=font(24, False, False, "zh"), fill=g, anchor="lm")
+        draw_rich(d, _MX + 36, y + 6, L(lab, lang).split("：")[0].split(":")[0], 20, _LW - 50, lang, TEXT, g, lh=1.1)
+        for j, k in enumerate(_MAT[n]):
+            cx = _MX + _LW + j * _CW + _CW // 2
+            if k == ".":
+                d.rounded_rectangle([cx - 28, y + 4, cx + 28, y + 34], 8, outline=(70, 80, 110), width=2)
+            else:
+                d.rounded_rectangle([cx - 28, y + 4, cx + 28, y + 34], 8, fill=_LVC[k])
+                d.text((cx, y + 19), _LVK[k], font=font(17, True, True), fill=(10, 15, 30), anchor="mm")
+    for n, t, c in ((1, tr("DATA RULE", "数据规则"), CYAN), (7, tr("LEARNING RULE", "学习规则"), AMBER), (13, tr("SYSTEM", "系统"), TEAL)):
+        y = _row_y(n) - (24 if n > 1 else 0)
+        if n > 1:
+            d.line([_MX, y + 10, 1820, y + 10], fill=LINE, width=1)
+            d.text((1820, y), L(t, lang), font=font(15, True, False, lang), fill=c, anchor="ra")
+
+
+def _hl(rows, text, c, side_y=None):
+    def draw(layer, d, lang):
+        y0, y1 = _row_y(rows[0]) - 4, _row_y(rows[-1]) + 40
+        d.rounded_rectangle([_MX - 14, y0, 1834, y1], 12, outline=c, width=3)
+    return draw
+
+
+SCENES.append(Scene("addresses", P5, tr("The address book: position × framework", "地址簿：位置 × 框架"), beats=[
+    Beat(tr(
+        "Here is the address book: thirteen positions against eleven routes, each cell colored by how deep you must go. "
+        "L zero is a config flag. L one is a declared hook. L two means subclassing a stage, L three means editing framework "
+        "files, and L four means the change crosses worker or backend boundaries. Dashed cells were not covered by the source "
+        "review. Read it by rows. Generation and staleness, rows two and five, are config or hooks almost everywhere: this is "
+        "what these runtimes are built for.",
+        "这是一本地址簿：十三个位置对十一条路线，每个格子的颜色表示你需要挖多深。L0 是改一个配置。L1 是接入一个声明好的钩子。"
+        "L2 是继承并覆写某个阶段，L3 是修改框架源文件，L4 则意味着改动要跨越 worker 或后端的边界。虚线格是源码审查没有覆盖的位置。"
+        "按行来读。生成和陈旧度，也就是第二行和第五行，几乎在所有框架里都是配置或钩子：这正是这些运行时擅长的事情。"),
+        add=[Custom(_matrix_draw)]),
+    Beat(tr(
+        "Rows seven and eight, advantage and surrogate, are hooks in verl, SkyRL, slime, NeMo RL and prime-rl, but file edits "
+        "in OpenRLHF and Miles. Row nine splits the field: slime and NeMo RL hand your loss the logits, while verl, SkyRL and "
+        "prime-rl pass only selected-token log-probs, so an exact entropy becomes an L four change. And rows eleven and "
+        "twelve, new networks and new update rules, are L four nearly everywhere. That pattern is the decision rule: pick the "
+        "route where your change is shallowest; if it is L four on every route, own the learner and reuse the runtime.",
+        "第七、第八行，优势和目标函数，在 verl、SkyRL、slime、NeMo RL、prime-rl 里是钩子，在 OpenRLHF 和 Miles 里则要改源文件。"
+        "第九行把框架分成两派：slime 和 NeMo RL 把 logits 交给你的 loss，而 verl、SkyRL、prime-rl 只传选中 token 的对数概率，"
+        "于是精确熵就成了一个 L4 的改动。第十一、十二行，新增网络和新的更新规则，几乎处处都是 L4。这个规律本身就是决策规则："
+        "选你的改动最浅的那条路线；如果它在每条路线上都是 L4，就自己持有 learner，复用运行时。"),
+        add=[Custom(_hl([9], "", AMBER)), Custom(_hl([11, 12], "", PINK))]),
+]))
+
+# ---- traced changes
+_TR = [
+    (CYAN, tr("DATA RULE · ①④⑤⑥", "数据规则 · ①④⑤⑥"), tr("Prioritize hard prompts, reuse each group up to k times", "优先采样难题，每组最多重用 k 次"),
+     tr("Miles `custom_async_data_buffer_path` · verl V1 custom ReplayBuffer / sampler (L1)", "Miles `custom_async_data_buffer_path` · verl V1 自定义 ReplayBuffer / sampler（L1）"),
+     [tr("① ④ `put` records difficulty, version, reuse count; `get` samples by priority", "① ④ `put` 记录难度、版本、重用次数；`get` 按优先级采样"),
+      tr("⑤ gate age at consumption, not at enqueue", "⑤ 在消费时而非入队时判断年龄"),
+      tr("⑥ reused = off-policy: keep behavior logprobs + version", "⑥ 重用即离策略：保存 behavior logprob 与版本")],
+     tr("Default buffers in Miles and ROLL delete on consumption; elsewhere TRL is L2, SkyRL L4.", "Miles、ROLL 默认 buffer 消费即删除；其他路线中 TRL 为 L2，SkyRL 为 L4。")),
+    (AMBER, tr("LEARNING RULE · ⑨⑩", "学习规则 · ⑨⑩"), tr("An exact entropy bonus or full-vocabulary KL", "精确熵奖励或全词表 KL"),
+     tr("slime `custom_loss` (logits + reducer) · NeMo RL `LossFunction` (LOGIT) · ROLL `loss_func`", "slime `custom_loss`（logits + reducer）· NeMo RL `LossFunction`（LOGIT）· ROLL `loss_func`"),
+     [tr("⑨ the hook must receive logits; a naive −log π bonus has zero expected gradient", "⑨ 钩子必须拿到 logits；朴素的 −log π 奖励期望梯度为零"),
+      tr("TP shards logits by vocabulary: use vocab-parallel ops", "TP 按词表切分 logits：用词表并行算子"),
+      tr("⑩ reduce with the framework's reducer; never re-average", "⑩ 用框架的 reducer 归约；不要再平均一次")],
+     tr("Fused paths (Liger PPO, TorchTitan chunked loss) change the gradient interface: keep a PyTorch reference.", "融合路径（Liger PPO、TorchTitan 分块 loss）会改变梯度接口：保留一个 PyTorch 参考实现。")),
+    (PINK, tr("LEARNING RULE · ⑪⑫⑬", "学习规则 · ⑪⑫⑬"), tr("A Q-critic + target network, own optimizer, 4 updates per batch", "Q critic + target 网络，独立优化器，每批更新 4 次"),
+     tr("Own learner on FSDP2 / DeepSpeed + vLLM / SGLang weight transfer (L4 everywhere else)", "自有 learner + FSDP2 / DeepSpeed + vLLM / SGLang 权重传输（其他路线皆为 L4）"),
+     [tr("⑪ create models & optimizers yourself; `Accelerator.prepare` takes one model per call", "⑪ 自己创建模型与优化器；`Accelerator.prepare` 一次只收一个模型"),
+      tr("⑫ ZeRO-3 `step` has no closure; FSDP2 local shard ≠ `full_tensor()`", "⑫ ZeRO-3 `step` 无 closure；FSDP2 本地分片 ≠ `full_tensor()`"),
+      tr("⑬ publish only the policy; Q and target stay in the learner", "⑬ 只发布策略；Q 与 target 留在 learner")],
+     tr("Checkpoint every optimizer, the target, buffer position and version.", "checkpoint 要包含每个优化器、target、buffer 位置与版本。")),
+]
+
+
+def _trace(i):
+    c, tag, title, route, steps, warn = _TR[i]
+
+    def draw(layer, d, lang):
+        x, y, w, h = 100 + i * 584, 196, 552, 800
+        d.rounded_rectangle([x, y, x + w, y + h], 16, fill=PANEL, outline=LINE, width=2)
+        d.rounded_rectangle([x, y, x + w, y + 8], 4, fill=c)
+        draw_rich(d, x + 26, y + 28, L(tag, lang), 19, w - 52, lang, c, c, True, lh=1.2)
+        yy = y + 70 + draw_rich(d, x + 26, y + 70, L(title, lang), 28, w - 52, lang, TEXT, c, True, lh=1.25)
+        yy += 18
+        d.text((x + 26, yy), L(tr("SHALLOWEST ROUTE", "最浅路线"), lang), font=font(16, True, False, lang), fill=MUTED)
+        yy += 30 + draw_rich(d, x + 26, yy + 30, L(route, lang), 21, w - 52, lang, TEXT, c, lh=1.3)
+        yy += 22
+        for s in steps:
+            d.ellipse([x + 26, yy + 9, x + 36, yy + 19], fill=c)
+            yy += draw_rich(d, x + 48, yy, L(s, lang), 21, w - 74, lang, TEXT, c, lh=1.3) + 14
+        d.line([x + 26, yy + 4, x + w - 26, yy + 4], fill=LINE, width=1)
+        draw_rich(d, x + 26, yy + 18, L(warn, lang), 19, w - 52, lang, MUTED, c, lh=1.3)
+    return draw
+
+
+SCENES.append(Scene("traced", P5, tr("Three changes, traced", "三个改动，逐项追踪"), beats=[
+    Beat(tr(
+        "Let's trace three concrete changes through the book. First, a data rule: prioritize hard prompts and reuse each "
+        "group up to k times. That touches positions one, four, five and six. The shallowest routes are Miles' replaceable "
+        "data buffer and verl's custom replay buffer. Write the rule as put and get; gate age at consumption; and remember that "
+        "a reused sample is off-policy, so it must carry its behavior log-probs and version. Note that the default buffers in "
+        "Miles and ROLL delete samples once consumed.",
+        "我们用地址簿追踪三个具体改动。第一个是数据规则：优先采样难题，每组数据最多重用 k 次。它触及第一、四、五、六个位置。"
+        "最浅的路线是 Miles 可替换的 data buffer 和 verl 的自定义 replay buffer。把规则写成 put 和 get；在消费时判断年龄；"
+        "并且记住，被重用的样本是离策略的，必须带着它的行为概率和版本号。注意，Miles 和 ROLL 的默认 buffer 在消费后就会删除样本。"),
+        add=[Custom(_trace(0))]),
+    Beat(tr(
+        "Second, a learning rule that needs the full distribution: an exact entropy bonus. That is positions nine and ten. "
+        "Your hook must receive logits, because a naive minus log-pi bonus on sampled tokens has zero expected gradient. slime, "
+        "NeMo RL and ROLL hand you logits; under tensor parallelism they are vocabulary-sharded, so use vocab-parallel ops, and "
+        "reduce with the framework's reducer instead of averaging twice.",
+        "第二个是需要完整分布的学习规则：精确熵奖励。它对应第九和第十个位置。你的钩子必须拿到 logits，因为在采样 token 上加朴素的负对数概率奖励，"
+        "期望梯度为零。slime、NeMo RL 和 ROLL 会把 logits 交给你；张量并行下这些 logits 按词表切分，所以要用词表并行的算子，"
+        "并用框架自带的 reducer 归约，而不是平均两次。"),
+        add=[Custom(_trace(1))]),
+    Beat(tr(
+        "Third, new state: a Q-critic with a target network, its own optimizer, and four updates per batch. Positions eleven, "
+        "twelve and thirteen, and every framework column says L four. So own the learner: create the models and optimizers "
+        "yourself on FSDP2 or DeepSpeed, respect their step rules, publish only the policy to vLLM or SGLang, and checkpoint "
+        "every optimizer, the target, the buffer position and the version.",
+        "第三个是新增状态：带 target 网络的 Q critic、独立的优化器、每批更新四次。它对应第十一、十二、十三个位置，而每个框架这一列都是 L4。"
+        "所以自己持有 learner：在 FSDP2 或 DeepSpeed 上自己创建模型和优化器，遵守它们的 step 约定，只把策略参数发布给 vLLM 或 SGLang，"
+        "checkpoint 时保存每个优化器、target、buffer 位置和版本号。"),
+        add=[Custom(_trace(2))]),
+]))
+
 # =========================================================== 15. contract & architecture
 _pseudo = """while not budget.exhausted():
     traces  = rollout.collect(prompts, policy_version)
@@ -1005,7 +1411,7 @@ def _clocks_draw(layer, d, lang):
             x += 80
 
 
-SCENES.append(Scene("contract", P5, tr("Own the trajectory contract; reuse the runtime", "自己掌握轨迹契约，复用运行时"), beats=[
+SCENES.append(Scene("contract", P6, tr("Own the trajectory contract; reuse the runtime", "自己掌握轨迹契约，复用运行时"), beats=[
     Beat(tr(
         "So what should you own? The review's answer is: own the trajectory contract. Keep exact token IDs per turn. "
         "Separate attention, loss and packing masks. Store behavior log-probs together with the sampling parameters. "
@@ -1063,7 +1469,7 @@ def _arrow_label(x, y, text, c):
     return T(x, y, text, size=24, bold=True, color=c)
 
 
-SCENES.append(Scene("decide", P5, tr("A decision procedure", "选型决策流程"), beats=[
+SCENES.append(Scene("decide", P6, tr("A decision procedure", "选型决策流程"), beats=[
     Beat(tr(
         "Now we can turn all of this into a decision procedure. First question: does your training data come from the "
         "current policy? If not, you're offline. Start with TRL plus PEFT; add DeepSpeed or FSDP2 for scale; use "
@@ -1127,7 +1533,7 @@ SCENES.append(Scene("decide", P5, tr("A decision procedure", "选型决策流程
 ]))
 
 # =========================================================== 17. validation
-SCENES.append(Scene("validate", P5, tr("Validate: two stages and a code checklist", "验证：两阶段评测与源码检查清单"), beats=[
+SCENES.append(Scene("validate", P6, tr("Validate: two stages and a code checklist", "验证：两阶段评测与源码检查清单"), beats=[
     Beat(tr(
         "How do you validate a choice? Use two stages. Stage one fixes the trajectories: feed every candidate the same "
         "tokens, masks, rewards and behavior log-probs, and compare loss, gradients, a single parameter update, memory "
@@ -1189,7 +1595,7 @@ _take = [
     (tr("Systems differ beyond algorithm lists", "差距不在算法列表"),
      tr("Scheduling, train–inference consistency, MoE depth, weight transfer and recovery decide the outcome.", "调度、训练推理一致性、MoE 深度、权重传输与恢复能力决定结果。"), TEAL),
     (tr("Own the math, reuse the runtime", "掌握数学，复用运行时"),
-     tr("Own the trajectory contract, objective and update rule; reuse engines and sharding backends.", "自己掌握轨迹契约、目标函数与更新规则；复用推理引擎和分片后端。"), VIOLET),
+     tr("Find your change's address: hooks → reuse a framework; L4 everywhere → own the learner. Reuse engines and sharding backends.", "先找到改动的地址：落在钩子里就复用框架；处处 L4 就自持 learner。推理引擎和分片后端始终复用。"), VIOLET),
     (tr("Optimize cost-to-target", "优化达标成本"),
      tr("One bottleneck at a time, anchored by a reference implementation.", "一次解决一个瓶颈，以参考实现为锚点。"), CORAL),
 ]
@@ -1221,8 +1627,9 @@ SCENES.append(Scene("summary", tr("SUMMARY", "总结"), tr("Five takeaways", "�
         "一致性、MoE 支持深度、权重传输和故障恢复。"),
         add=_take_els([0, 1, 2])),
     Beat(tr(
-        "Four: own the math and the trajectory contract, and reuse the runtime. Five: optimize cost to target, one "
+        "Four: find your change's address in the objective. If it stays in hooks, reuse a framework; if it crosses "
+        "boundaries everywhere, own the learner and the trajectory contract, and reuse the runtime. Five: optimize cost to target, one "
         "bottleneck at a time, with a small reference implementation as your anchor. Thanks for watching.",
-        "第四，自己掌握数学和轨迹契约，复用运行时。第五，优化达到目标的成本，一次解决一个瓶颈，并以一个小型参考实现为锚点。感谢观看。"),
+        "第四，先找到你的改动在目标函数里的地址：落在钩子里就复用现成框架；处处都要跨边界，就自己掌握 learner 与轨迹契约，复用运行时。第五，优化达到目标的成本，一次解决一个瓶颈，并以一个小型参考实现为锚点。感谢观看。"),
         add=_take_els([3, 4])),
 ]))
